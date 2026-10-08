@@ -86,12 +86,6 @@ git commit -m "Describe your changes"
 
 Replace `"Describe your changes"` with a short, meaningful description of what you updated.
 
-For example:
-
-```bash
-git commit -m "Update by Krishna: Improved camera inspection and defect simulation"
-```
-
 **Step 5: Push your changes to GitHub**
 
 ```bash
