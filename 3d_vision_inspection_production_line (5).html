@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Complete Beer Canning Production Line & KEYENCE Inspection</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Import Maps for Modern Three.js ESM Modules -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #0b1120; color: #f8fafc; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        .glass-panel { background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.12); }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 3px; }
+        .pulse-glow-green { animation: glowGreen 1.5s infinite alternate; }
+        .pulse-glow-red { animation: glowRed 0.6s infinite alternate; }
+        @keyframes glowGreen { 0% { box-shadow: 0 0 5px rgba(34,197,94,0.4); } 100% { box-shadow: 0 0 20px rgba(34,197,94,0.9); } }
+        @keyframes glowRed { 0% { box-shadow: 0 0 5px rgba(239,68,68,0.4); } 100% { box-shadow: 0 0 20px rgba(239,68,68,0.9); } }
+        .laser-grid-bg { background: linear-gradient(180deg, rgba(6,182,212,0.1) 0%, rgba(6,182,212,0) 100%); }
+    </style>
+</head>
+<body class="select-none">
+
+    <div id="canvas-container" class="absolute inset-0"></div>
+
+    <!-- Alarm / Diagnostic Warning Banner -->
+    <div id="alarm-banner" class="hidden absolute top-20 left-1/2 -translate-x-1/2 z-30 px-6 py-2.5 rounded-xl bg-rose-600/90 text-white font-bold text-sm border border-rose-300 shadow-2xl flex items-center gap-3 animate-bounce">
+        <i class="fa-solid fa-triangle-exclamation text-amber-300 text-lg"></i>
+        <span id="alarm-text">CONVEYOR JAM DETECTED AT STATION 2</span>
+        <button onclick="clearFaults()" class="ml-4 px-2.5 py-1 bg-white text-rose-700 text-xs rounded hover:bg-rose-100 transition font-sans">Clear Alarm</button>
+    </div>
+
+    <!-- Header Navigation & Overall Line KPI Stats -->
+    <header class="absolute top-0 left-0 right-0 p-3 md:p-4 flex flex-col lg:flex-row justify-between items-center pointer-events-none z-10 gap-3">
+        <div class="glass-panel px-4 py-2.5 rounded-xl flex items-center gap-3 pointer-events-auto shadow-2xl border-l-4 border-l-blue-500">
+            <div class="w-10 h-10 rounded-lg bg-blue-600/30 border border-blue-400 flex items-center justify-center text-blue-400 text-xl">
+                <i class="fa-solid fa-factory"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base text-white leading-tight">220 CPM Canning Line & KEYENCE Vision</h1>
+                <p class="text-[11px] text-slate-400">13-Station Automated Production Line with Advanced Diagnostics</p>
+            </div>
+        </div>
+
+        <!-- Mode Overlay Toolbar -->
+        <div class="glass-panel px-3 py-2 rounded-xl flex items-center gap-2 pointer-events-auto text-xs shadow-2xl flex-wrap justify-center">
+            <button id="btn-heatmap" onclick="toggleHeatmap()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-slate-700">
+                <i class="fa-solid fa-fire text-amber-400"></i> Heatmap
+            </button>
+            <button id="btn-schematics" onclick="toggleSchematics()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-slate-700">
+                <i class="fa-solid fa-network-wired text-cyan-400"></i> Cable Routing
+            </button>
+            <button id="btn-beams" onclick="toggleBeams()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-slate-700">
+                <i class="fa-solid fa-bolt text-yellow-400"></i> Sensor Beams
+            </button>
+            <button id="btn-tour" onclick="startGuidedTour()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-slate-700">
+                <i class="fa-solid fa-route text-emerald-400"></i> Guided Tour
+            </button>
+            <button onclick="openOEEModal()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-slate-700">
+                <i class="fa-solid fa-chart-pie text-purple-400"></i> OEE Analytics
+            </button>
+            <button onclick="exportShiftReport()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-slate-700">
+                <i class="fa-solid fa-file-export text-emerald-400"></i> Report
+            </button>
+        </div>
+
+        <!-- Real-time Production Dashboard -->
+        <div class="glass-panel px-5 py-2 rounded-xl flex items-center gap-4 pointer-events-auto text-xs shadow-2xl">
+            <div class="text-center">
+                <span class="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Speed</span>
+                <span id="stat-cpm" class="font-mono text-base font-bold text-blue-400">220 CPM</span>
+            </div>
+            <div class="h-7 w-px bg-slate-700/80"></div>
+            <div class="text-center">
+                <span class="text-[9px] text-slate-400 block uppercase font-bold tracking-wider">Inspected</span>
+                <span id="stat-total" class="font-mono text-base font-bold text-white">0</span>
+            </div>
+            <div class="h-7 w-px bg-slate-700/80"></div>
+            <div class="text-center">
+                <span class="text-[9px] text-emerald-400 block uppercase font-bold tracking-wider">GOOD</span>
+                <span id="stat-good" class="font-mono text-base font-bold text-emerald-400">0</span>
+            </div>
+            <div class="h-7 w-px bg-slate-700/80"></div>
+            <div class="text-center">
+                <span class="text-[9px] text-rose-400 block uppercase font-bold tracking-wider">NG Reject</span>
+                <span id="stat-ng" class="font-mono text-base font-bold text-rose-400">0</span>
+            </div>
+            <div class="h-7 w-px bg-slate-700/80"></div>
+            <div class="text-center">
+                <span class="text-[9px] text-cyan-400 block uppercase font-bold tracking-wider">Yield</span>
+                <span id="stat-rate" class="font-mono text-base font-bold text-cyan-400">100%</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Floating Camera View & Station Quick Jump Menu -->
+    <div class="absolute top-24 left-4 z-10 flex flex-col gap-2 glass-panel p-2.5 rounded-xl pointer-events-auto shadow-2xl w-60 max-h-[calc(100vh-130px)] overflow-y-auto custom-scrollbar">
+        <span class="text-[10px] uppercase font-bold text-slate-400 px-2 py-0.5">Preset Views</span>
+        <button onclick="setView('overview')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-blue-600 text-xs font-medium text-slate-200 transition text-left flex items-center gap-2 border border-slate-700/50">
+            <i class="fa-solid fa-globe text-blue-400 w-4"></i> Overview
+        </button>
+        <button onclick="setView('depalletizer')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-blue-600 text-xs font-medium text-slate-200 transition text-left flex items-center gap-2 border border-slate-700/50">
+            <i class="fa-solid fa-boxes-stacked text-amber-400 w-4"></i> Infeed / Depalletizer
+        </button>
+        <button onclick="setView('filler')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-blue-600 text-xs font-medium text-slate-200 transition text-left flex items-center gap-2 border border-slate-700/50">
+            <i class="fa-solid fa-faucet-drip text-emerald-400 w-4"></i> Filler / Seamer
+        </button>
+        <button onclick="setView('inspection')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-blue-600 text-xs font-medium text-slate-200 transition text-left flex items-center gap-2 border border-slate-700/50">
+            <i class="fa-solid fa-eye text-cyan-400 w-4"></i> KEYENCE Station
+        </button>
+        <button onclick="setView('packaging')" class="px-2.5 py-1.5 rounded-lg bg-slate-800/90 hover:bg-blue-600 text-xs font-medium text-slate-200 transition text-left flex items-center gap-2 border border-slate-700/50">
+            <i class="fa-solid fa-box text-purple-400 w-4"></i> Packaging
+        </button>
+
+        <hr class="border-slate-700/60 my-1">
+
+        <span class="text-[10px] uppercase font-bold text-slate-400 px-2 py-0.5">Jump to Station (1-13)</span>
+        <select id="station-select" onchange="jumpToStation(this.value)" class="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="1">1. Depalletizing</option>
+            <option value="2">2. Single File Combiner</option>
+            <option value="3">3. Invert, Clean & Print</option>
+            <option value="4">4. Orientation Check</option>
+            <option value="5">5. Rotary Filling (CO2 Flush)</option>
+            <option value="6">6. Lid Seaming (4500 RPM)</option>
+            <option value="7">7. Can Washer Tunnel</option>
+            <option value="8">8. Condensation Blower</option>
+            <option value="9">9. Sleeve Labeling</option>
+            <option value="10" selected>10. KEYENCE Vision Inspection</option>
+            <option value="11">11. Mass Accumulation</option>
+            <option value="12">12. PakTech Packaging</option>
+            <option value="13">13. Manual Palletizing</option>
+        </select>
+    </div>
+
+    <!-- Right Control Panel & Selected Station Inspector -->
+    <div class="absolute top-24 right-4 bottom-6 w-80 md:w-96 glass-panel rounded-2xl p-3.5 flex flex-col z-10 pointer-events-auto custom-scrollbar overflow-y-auto gap-3.5 shadow-2xl">
+        
+        <!-- Live System Controls -->
+        <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2.5 flex items-center justify-between">
+                <span><i class="fa-solid fa-sliders text-blue-400 mr-2"></i>Line Controls</span>
+                <span id="line-status-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">RUNNING</span>
+            </h3>
+            
+            <div class="space-y-2.5">
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-400">Production Speed</span>
+                        <span id="speed-val" class="font-mono text-cyan-400">220 CPM</span>
+                    </div>
+                    <input id="speed-slider" type="range" min="0" max="300" value="220" class="w-full accent-blue-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span class="text-slate-400">Camera Rail Slide (FR-29)</span>
+                        <span id="rail-height-val" class="font-mono text-amber-400">55 mm</span>
+                    </div>
+                    <input id="rail-height-slider" type="range" min="10" max="100" value="55" class="w-full accent-amber-500 h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div class="pt-1 flex gap-2">
+                    <button id="btn-toggle-run" class="flex-1 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 shadow">
+                        <i class="fa-solid fa-pause"></i> Pause Line
+                    </button>
+                    <button id="btn-inject-defect" class="flex-1 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 shadow">
+                        <i class="fa-solid fa-bug"></i> Force Defect
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Optics & Lighting Simulator Panel -->
+        <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span><i class="fa-solid fa-lightbulb text-yellow-400 mr-2"></i>Optics Controls</span>
+                <span class="text-[10px] text-slate-400">FR-12 / FR-13</span>
+            </h3>
+            <div class="grid grid-cols-3 gap-1.5 mb-2">
+                <button onclick="setLightingMode('ring')" id="opt-ring" class="px-2 py-1 bg-blue-600 text-white rounded text-[10px] font-medium transition">Ring Light</button>
+                <button onclick="setLightingMode('darkfield')" id="opt-darkfield" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-medium transition">Darkfield</button>
+                <button onclick="setLightingMode('dome')" id="opt-dome" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-medium transition">Dome Light</button>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400 text-[11px]">Polarizer / Glare Filter</span>
+                <button id="btn-polarizer" onclick="togglePolarizer()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded text-[10px] font-bold">
+                    OFF (Glare High)
+                </button>
+            </div>
+        </div>
+
+        <!-- KEYENCE VS Creator Simulated Algorithm Feed (Station 10) -->
+        <div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span><i class="fa-solid fa-microchip text-indigo-400 mr-2"></i>VS Creator Inspection</span>
+                <span class="text-[10px] text-slate-400 font-mono">VS-C320MX</span>
+            </h3>
+
+            <!-- Camera Display with Bounding Tool Overlays -->
+            <div class="relative w-full h-32 bg-black rounded-lg border border-slate-700 overflow-hidden flex items-center justify-center">
+                <div class="absolute inset-0 laser-grid-bg pointer-events-none flex items-center justify-center">
+                    <div class="w-full h-px bg-cyan-500/30 border-t border-dashed border-cyan-400/50"></div>
+                </div>
+
+                <div class="absolute inset-2 border border-cyan-500/50 rounded pointer-events-none flex flex-col justify-between p-1 text-[9px] font-mono text-cyan-400">
+                    <div class="flex justify-between">
+                        <span>TOOL_1: RIM_GAUGE [OK]</span>
+                        <span>EXP: 0.8ms</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>TOOL_2: FLANGE_BLOB</span>
+                        <span id="histogram-val" class="text-emerald-400 font-bold">TH: 142/255</span>
+                    </div>
+                </div>
+
+                <!-- Can Visual -->
+                <div id="simulated-can-view" class="w-20 h-20 rounded-full border-4 border-emerald-400 bg-gradient-to-br from-slate-400 to-slate-700 flex items-center justify-center shadow-inner transition-all duration-300 relative">
+                    <div class="w-12 h-12 rounded-full border-2 border-slate-500/80 bg-slate-800/40 flex items-center justify-center">
+                        <span id="vision-result-overlay" class="font-bold text-[10px] text-emerald-400">PASS</span>
+                    </div>
+                    <div id="glare-overlay" class="absolute inset-0 bg-white/30 rounded-full blur-[2px] pointer-events-none"></div>
+                </div>
+
+                <div id="defect-indicator-box" class="hidden absolute bottom-2 bg-rose-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded border border-rose-300 animate-bounce">
+                    DEFECT: LIP DENT / FLANGE FLICK
+                </div>
+            </div>
+
+            <!-- Grayscale Histogram & Threshold Limit Sliders -->
+            <div class="mt-2.5 p-2 bg-slate-950 rounded border border-slate-800">
+                <div class="flex justify-between text-[10px] text-slate-400 mb-1">
+                    <span>Grayscale Decision Histogram</span>
+                    <span id="thresh-label" class="text-cyan-400 font-mono">Limit: 140</span>
+                </div>
+                <div class="h-6 flex items-end gap-0.5 px-1 mb-1">
+                    <div class="w-1/12 h-2 bg-blue-900"></div>
+                    <div class="w-1/12 h-3 bg-blue-800"></div>
+                    <div class="w-1/12 h-5 bg-blue-600"></div>
+                    <div class="w-1/12 h-6 bg-cyan-500"></div>
+                    <div class="w-1/12 h-4 bg-cyan-400"></div>
+                    <div class="w-1/12 h-2 bg-blue-700"></div>
+                    <div class="w-1/12 h-1 bg-slate-700"></div>
+                    <div class="w-1/12 h-3 bg-rose-500"></div>
+                    <div class="w-1/12 h-1 bg-slate-800"></div>
+                </div>
+                <input id="thresh-slider" type="range" min="50" max="220" value="140" oninput="updateThreshold(this.value)" class="w-full accent-cyan-400 h-1 bg-slate-800 appearance-none cursor-pointer">
+            </div>
+
+            <!-- Diagnostic Fault Simulator Trigger Buttons -->
+            <div class="grid grid-cols-2 gap-1.5 mt-2.5">
+                <button onclick="triggerFault('jam')" class="py-1 bg-amber-600/30 hover:bg-amber-600 border border-amber-500/50 text-amber-200 rounded text-[10px] font-medium transition">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Jam Fault
+                </button>
+                <button onclick="triggerFault('pressure')" class="py-1 bg-rose-600/30 hover:bg-rose-600 border border-rose-500/50 text-rose-200 rounded text-[10px] font-medium transition">
+                    <i class="fa-solid fa-gauge-low mr-1"></i> Low Air Press.
+                </button>
+            </div>
+        </div>
+
+        <!-- Station Specification Inspector -->
+        <div class="flex-1 bg-slate-900/70 p-3 rounded-xl border border-slate-800 flex flex-col">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-circle-info text-amber-400"></i>
+                <span id="inspector-title">Station Inspector</span>
+            </h3>
+
+            <div id="inspector-body" class="text-xs text-slate-300 space-y-2 overflow-y-auto pr-1">
+                <p class="text-slate-400 italic">Click on any station equipment in the 3D model to display detailed technical specifications.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- OEE Breakdown Modal -->
+    <div id="modal-oee" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-lg rounded-2xl p-5 border border-slate-700 shadow-2xl relative">
+            <button onclick="closeOEEModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+            
+            <h2 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-purple-400"></i> Overall Equipment Effectiveness (OEE)
+            </h2>
+
+            <div class="space-y-4 text-xs">
+                <div class="p-4 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div>
+                        <span class="text-slate-400 block text-[10px] font-bold uppercase tracking-wider">Overall Line OEE</span>
+                        <span id="oee-overall" class="text-3xl font-mono font-bold text-purple-400">92.4%</span>
+                    </div>
+                    <div class="text-right text-[11px] text-slate-400">
+                        <span>Target Benchmark: <strong class="text-white">85.0%</strong></span><br>
+                        <span>World Class Standard</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3 text-center">
+                    <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800">
+                        <span class="text-slate-400 block text-[10px] font-bold">AVAILABILITY</span>
+                        <span id="oee-avail" class="text-lg font-mono font-bold text-blue-400">96.5%</span>
+                        <span class="text-[9px] text-slate-500 block">Uptime / Planned</span>
+                    </div>
+                    <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800">
+                        <span class="text-slate-400 block text-[10px] font-bold">PERFORMANCE</span>
+                        <span id="oee-perf" class="text-lg font-mono font-bold text-emerald-400">98.1%</span>
+                        <span class="text-[9px] text-slate-500 block">220 / 220 CPM</span>
+                    </div>
+                    <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800">
+                        <span class="text-slate-400 block text-[10px] font-bold">QUALITY</span>
+                        <span id="oee-qual" class="text-lg font-mono font-bold text-cyan-400">97.8%</span>
+                        <span class="text-[9px] text-slate-500 block">Pass / Total Cans</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Logic using ES Module Three.js -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let cans = [];
+        let raycaster, mouse;
+        
+        let fillerCarousel, seamerTurret, depalSweepBar, pakTechPressHead;
+        let rinseParticles, washParticles, airKnifeParticles;
+        let cameraSlideGroup, keyenceCamera, ringLight, solenoidValve, airBlastMesh, laserGridMesh;
+        let schematicCableGroup, sensorBeamsGroup;
+
+        let isRunning = true;
+        let lineSpeedFactor = 1.0; 
+        let nextCanSpawnTime = 0;
+        let canSpawnInterval = 600; 
+        let forceDefectNext = false;
+        let cameraHeightOffset = 0.55;
+
+        let isHeatmapActive = false;
+        let isSchematicsActive = false;
+        let isBeamsActive = false;
+        let isPolarizerActive = false;
+        let currentLightingMode = 'ring';
+
+        let activeFault = null; 
+        let isTourRunning = false;
+        let tourStep = 0;
+
+        let stats = { total: 0, good: 0, ng: 0, startTime: Date.now(), downtimeMs: 0 };
+
+        const WAYPOINTS = [
+            { station: 1,  x: -24, y: 0.84, z: 10 },
+            { station: 2,  x: -18, y: 0.84, z: 10 },
+            { station: 3,  x: -12, y: 0.84, z: 10 },
+            { station: 4,  x: -6,  y: 0.84, z: 10 },
+            { station: 5,  x: 0,   y: 0.84, z: 10 },
+            { station: 6,  x: 6,   y: 0.84, z: 10 },
+            { station: 7,  x: 12,  y: 0.84, z: 10 },
+            { station: 8,  x: 18,  y: 0.84, z: 10 },
+            { station: 8.5, x: 22, y: 0.84, z: 4 },
+            { station: 9,  x: 18,  y: 0.84, z: -2 },
+            { station: 10, x: 8,   y: 0.84, z: -2 },
+            { station: 10.5, x: 3, y: 0.84, z: -2 },
+            { station: 11, x: -4,  y: 0.84, z: -2 },
+            { station: 12, x: -14, y: 0.84, z: -2 },
+            { station: 13, x: -22, y: 0.84, z: -2 }
+        ];
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x080d1a);
+            scene.fog = new THREE.FogExp2(0x080d1a, 0.018);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+            camera.position.set(0, 28, 35);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 1, 4);
+            controls.maxPolarAngle = Math.PI / 2 - 0.02;
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            setupLighting();
+            buildEnvironment();
+
+            buildConveyorTracks();
+            buildStation1_Depalletizer();
+            buildStation2_Combiner();
+            buildStation3_CleanerPrinter();
+            buildStation4_Orientation();
+            buildStation5and6_FillerSeamer();
+            buildStation7and8_WasherBlower();
+            buildStation9_Labeler();
+            buildStation10_KEYENCEVision();
+            buildStation11_Accumulation();
+            buildStation12_PakTech();
+            buildStation13_Palletizer();
+
+            buildSchematicCables();
+            buildSensorBeams();
+
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('pointerdown', onPointerDown);
+
+            setupUIListeners();
+            showStationSpecs(10);
+
+            animate(0);
+        }
+
+        function setupLighting() {
+            const ambient = new THREE.AmbientLight(0x94a3b8, 0.7);
+            scene.add(ambient);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(20, 35, 20);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            scene.add(dirLight);
+
+            const bayLight1 = new THREE.PointLight(0x38bdf8, 0.8, 30);
+            bayLight1.position.set(-10, 8, 5);
+            scene.add(bayLight1);
+
+            const bayLight2 = new THREE.PointLight(0x818cf8, 0.8, 30);
+            bayLight2.position.set(10, 8, 5);
+            scene.add(bayLight2);
+        }
+
+        function buildEnvironment() {
+            const floorGeo = new THREE.PlaneGeometry(70, 45);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.8, metalness: 0.2 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            const grid = new THREE.GridHelper(70, 70, 0x3b82f6, 0x1e293b);
+            grid.position.y = 0.001;
+            scene.add(grid);
+        }
+
+        function buildConveyorTracks() {
+            createConveyorSegment(-26, 20, 10, 0.8);
+            createConveyorSegment(-24, 20, -2, 0.8);
+            createConveyorSegment(20, 22, 4, 1.2, true);
+        }
+
+        function createConveyorSegment(startX, endX, zPos, width, isVertical = false) {
+            const length = Math.abs(endX - startX);
+            const midX = (startX + endX) / 2;
+
+            const frameGeo = isVertical ? new THREE.BoxGeometry(width, 0.35, length) : new THREE.BoxGeometry(length, 0.35, width);
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.3 });
+            const frame = new THREE.Mesh(frameGeo, frameMat);
+            frame.position.set(isVertical ? startX : midX, 0.6, zPos);
+            frame.castShadow = true;
+            scene.add(frame);
+        }
+
+        function buildStation1_Depalletizer() {
+            const group = new THREE.Group();
+            group.position.set(-24, 0, 10);
+
+            const palletGeo = new THREE.BoxGeometry(1.6, 0.15, 1.6);
+            const palletMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+            const pallet = new THREE.Mesh(palletGeo, palletMat);
+            pallet.position.y = 0.075;
+            group.add(pallet);
+
+            for (let layer = 0; layer < 4; layer++) {
+                const layerGeo = new THREE.BoxGeometry(1.4, 0.35, 1.4);
+                const layerMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
+                const layerMesh = new THREE.Mesh(layerGeo, layerMat);
+                layerMesh.position.y = 0.35 + layer * 0.4;
+                group.add(layerMesh);
+            }
+
+            const frameGeo = new THREE.BoxGeometry(0.1, 2.8, 1.8);
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 });
+            const frame1 = new THREE.Mesh(frameGeo, frameMat);
+            frame1.position.set(-0.8, 1.4, 0);
+            group.add(frame1);
+
+            const sweepBarGeo = new THREE.BoxGeometry(1.6, 0.1, 0.15);
+            depalSweepBar = new THREE.Mesh(sweepBarGeo, frameMat);
+            depalSweepBar.position.set(0, 1.9, 0);
+            group.add(depalSweepBar);
+
+            group.userData = { stationId: 1 };
+            scene.add(group);
+        }
+
+        function buildStation2_Combiner() {
+            const group = new THREE.Group();
+            group.position.set(-18, 0, 10);
+
+            const wallGeo = new THREE.BoxGeometry(2.0, 0.2, 0.05);
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9 });
+            
+            const w1 = new THREE.Mesh(wallGeo, wallMat);
+            w1.rotation.y = 0.15;
+            w1.position.set(0, 0.95, 0.5);
+            group.add(w1);
+
+            const w2 = new THREE.Mesh(wallGeo, wallMat);
+            w2.rotation.y = -0.15;
+            w2.position.set(0, 0.95, -0.5);
+            group.add(w2);
+
+            group.userData = { stationId: 2 };
+            scene.add(group);
+        }
+
+        function buildStation3_CleanerPrinter() {
+            const group = new THREE.Group();
+            group.position.set(-12, 0, 10);
+
+            const boxGeo = new THREE.BoxGeometry(2.2, 1.4, 1.0);
+            const boxMat = new THREE.MeshPhysicalMaterial({ color: 0x0284c7, roughness: 0.2, transmission: 0.6, transparent: true });
+            const chamber = new THREE.Mesh(boxGeo, boxMat);
+            chamber.position.y = 1.2;
+            group.add(chamber);
+
+            rinseParticles = createParticleSystem(0x38bdf8, 80, 0.8);
+            rinseParticles.position.set(-12, 1.2, 10);
+            scene.add(rinseParticles);
+
+            group.userData = { stationId: 3 };
+            scene.add(group);
+        }
+
+        function buildStation4_Orientation() {
+            const group = new THREE.Group();
+            group.position.set(-6, 0, 10);
+
+            const postGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8, 12);
+            const postMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 });
+            
+            const p1 = new THREE.Mesh(postGeo, postMat);
+            p1.position.set(0, 1.1, 0.45);
+            group.add(p1);
+
+            group.userData = { stationId: 4 };
+            scene.add(group);
+        }
+
+        function buildStation5and6_FillerSeamer() {
+            const group = new THREE.Group();
+            group.position.set(3, 0, 10);
+
+            const baseGeo = new THREE.BoxGeometry(7.0, 0.8, 2.2);
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, roughness: 0.2 });
+            const base = new THREE.Mesh(baseGeo, baseMat);
+            base.position.y = 0.4;
+            group.add(base);
+
+            fillerCarousel = new THREE.Group();
+            fillerCarousel.position.set(-1.8, 1.4, 0);
+
+            const bowlGeo = new THREE.CylinderGeometry(1.1, 1.1, 0.6, 24);
+            const bowlMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.9, roughness: 0.1 });
+            const bowl = new THREE.Mesh(bowlGeo, bowlMat);
+            fillerCarousel.add(bowl);
+
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const valveGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.3, 12);
+                const valveMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.9 });
+                const valve = new THREE.Mesh(valveGeo, valveMat);
+                valve.position.set(Math.cos(angle) * 0.85, -0.3, Math.sin(angle) * 0.85);
+                fillerCarousel.add(valve);
+            }
+            group.add(fillerCarousel);
+
+            seamerTurret = new THREE.Group();
+            seamerTurret.position.set(1.8, 1.4, 0);
+
+            const turretGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.7, 16);
+            const turretMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.2 });
+            const turret = new THREE.Mesh(turretGeo, turretMat);
+            seamerTurret.add(turret);
+            group.add(seamerTurret);
+
+            group.userData = { stationId: 5 };
+            scene.add(group);
+        }
+
+        function buildStation7and8_WasherBlower() {
+            const washGroup = new THREE.Group();
+            washGroup.position.set(12, 0, 10);
+
+            const washBoxGeo = new THREE.BoxGeometry(2.4, 1.2, 0.9);
+            const washBoxMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.7 });
+            const washBox = new THREE.Mesh(washBoxGeo, washBoxMat);
+            washBox.position.y = 1.1;
+            washGroup.add(washBox);
+
+            washParticles = createParticleSystem(0x38bdf8, 120, 0.6);
+            washParticles.position.set(12, 1.1, 10);
+            scene.add(washParticles);
+
+            washGroup.userData = { stationId: 7 };
+            scene.add(washGroup);
+
+            const blowGroup = new THREE.Group();
+            blowGroup.position.set(18, 0, 10);
+
+            const hoodGeo = new THREE.BoxGeometry(2.0, 1.0, 0.8);
+            const hoodMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 });
+            const hood = new THREE.Mesh(hoodGeo, hoodMat);
+            hood.position.y = 1.0;
+            blowGroup.add(hood);
+
+            airKnifeParticles = createParticleSystem(0xffffff, 100, 0.5);
+            airKnifeParticles.position.set(18, 1.0, 10);
+            scene.add(airKnifeParticles);
+
+            blowGroup.userData = { stationId: 8 };
+            scene.add(blowGroup);
+        }
+
+        function buildStation9_Labeler() {
+            const group = new THREE.Group();
+            group.position.set(18, 0, -2);
+
+            const machGeo = new THREE.CylinderGeometry(0.65, 0.65, 1.4, 20);
+            const machMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.7, roughness: 0.3 });
+            const mach = new THREE.Mesh(machGeo, machMat);
+            mach.position.y = 1.2;
+            group.add(mach);
+
+            group.userData = { stationId: 9 };
+            scene.add(group);
+        }
+
+        function buildStation10_KEYENCEVision() {
+            const group = new THREE.Group();
+            group.position.set(8, 0, -2);
+
+            const colGeo = new THREE.BoxGeometry(0.15, 2.2, 0.15);
+            const colMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8 });
+            const column = new THREE.Mesh(colGeo, colMat);
+            column.position.set(0, 1.1, -0.7);
+            group.add(column);
+
+            const slideRailGroup = new THREE.Group();
+            slideRailGroup.position.set(0, 1.4, -0.62);
+
+            cameraSlideGroup = new THREE.Group();
+            const carriageGeo = new THREE.BoxGeometry(0.12, 0.16, 0.08);
+            const carriageMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, metalness: 0.6 });
+            const carriage = new THREE.Mesh(carriageGeo, carriageMat);
+            cameraSlideGroup.add(carriage);
+
+            keyenceCamera = new THREE.Group();
+            keyenceCamera.position.set(0, -0.12, 0.62);
+
+            const camBodyGeo = new THREE.BoxGeometry(0.14, 0.18, 0.14);
+            const camBodyMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.7 });
+            const camBody = new THREE.Mesh(camBodyGeo, camBodyMat);
+            keyenceCamera.add(camBody);
+
+            const ringGeo = new THREE.TorusGeometry(0.12, 0.03, 12, 24);
+            const ringMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8 });
+            ringLight = new THREE.Mesh(ringGeo, ringMat);
+            ringLight.rotation.x = Math.PI / 2;
+            ringLight.position.y = -0.21;
+            keyenceCamera.add(ringLight);
+
+            const laserPlaneGeo = new THREE.PlaneGeometry(0.6, 0.6);
+            const laserPlaneMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+            laserGridMesh = new THREE.Mesh(laserPlaneGeo, laserPlaneMat);
+            laserGridMesh.rotation.x = Math.PI / 2;
+            laserGridMesh.position.set(0, -0.45, 0);
+            keyenceCamera.add(laserGridMesh);
+
+            cameraSlideGroup.add(keyenceCamera);
+            cameraSlideGroup.position.set(0, (cameraHeightOffset - 0.5) * 0.6, 0);
+
+            slideRailGroup.add(cameraSlideGroup);
+            group.add(slideRailGroup);
+
+            const rejectGroup = new THREE.Group();
+            rejectGroup.position.set(-5, 0.9, 0);
+
+            const valveGeo = new THREE.BoxGeometry(0.12, 0.16, 0.1);
+            const valveMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.7 });
+            solenoidValve = new THREE.Mesh(valveGeo, valveMat);
+            solenoidValve.position.set(0, 0.1, -0.42);
+            rejectGroup.add(solenoidValve);
+
+            const blastGeo = new THREE.ConeGeometry(0.18, 0.45, 12, 1, true);
+            const blastMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, opacity: 0, transparent: true });
+            airBlastMesh = new THREE.Mesh(blastGeo, blastMat);
+            airBlastMesh.rotation.x = -Math.PI / 2;
+            airBlastMesh.position.set(0, 0.18, -0.2);
+            rejectGroup.add(airBlastMesh);
+
+            group.add(rejectGroup);
+
+            group.userData = { stationId: 10 };
+            scene.add(group);
+        }
+
+        function buildStation11_Accumulation() {
+            const group = new THREE.Group();
+            group.position.set(-4, 0, -2);
+
+            const tableGeo = new THREE.BoxGeometry(5.0, 0.35, 1.8);
+            const tableMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.4 });
+            const table = new THREE.Mesh(tableGeo, tableMat);
+            table.position.y = 0.6;
+            group.add(table);
+
+            group.userData = { stationId: 11 };
+            scene.add(group);
+        }
+
+        function buildStation12_PakTech() {
+            const group = new THREE.Group();
+            group.position.set(-14, 0, -2);
+
+            const towerGeo = new THREE.BoxGeometry(1.6, 2.0, 1.1);
+            const towerMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 });
+            const tower = new THREE.Mesh(towerGeo, towerMat);
+            tower.position.y = 1.3;
+            group.add(tower);
+
+            const pressGeo = new THREE.BoxGeometry(0.6, 0.2, 0.6);
+            const pressMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+            pakTechPressHead = new THREE.Mesh(pressGeo, pressMat);
+            pakTechPressHead.position.set(0, 1.1, 0);
+            group.add(pakTechPressHead);
+
+            group.userData = { stationId: 12 };
+            scene.add(group);
+        }
+
+        function buildStation13_Palletizer() {
+            const group = new THREE.Group();
+            group.position.set(-22, 0, -2);
+
+            const palletGeo = new THREE.BoxGeometry(1.6, 0.15, 1.6);
+            const palletMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+            const pallet = new THREE.Mesh(palletGeo, palletMat);
+            pallet.position.set(-0.5, 0.075, 0);
+            group.add(pallet);
+
+            for (let layer = 0; layer < 3; layer++) {
+                const caseGeo = new THREE.BoxGeometry(1.2, 0.3, 1.2);
+                const caseMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6 });
+                const caseMesh = new THREE.Mesh(caseGeo, caseMat);
+                caseMesh.position.set(-0.5, 0.3 + layer * 0.32, 0);
+                group.add(caseMesh);
+            }
+
+            group.userData = { stationId: 13 };
+            scene.add(group);
+        }
+
+        function createParticleSystem(colorHex, count, size) {
+            const geo = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            for (let i = 0; i < count * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 0.6;
+                positions[i + 1] = (Math.random() - 0.5) * 0.8;
+                positions[i + 2] = (Math.random() - 0.5) * 0.6;
+            }
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const mat = new THREE.PointsMaterial({ color: colorHex, size: size * 0.08, transparent: true, opacity: 0.6 });
+            return new THREE.Points(geo, mat);
+        }
+
+        function buildSchematicCables() {
+            schematicCableGroup = new THREE.Group();
+            
+            const path1 = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(8, 2.2, -2.7),
+                new THREE.Vector3(8, 0.4, -2.7),
+                new THREE.Vector3(0, 0.4, -2.7),
+                new THREE.Vector3(-10, 0.4, -2.7)
+            ]);
+            const tubeGeo1 = new THREE.TubeGeometry(path1, 40, 0.02, 8, false);
+            const tubeMat1 = new THREE.MeshBasicMaterial({ color: 0x2563eb });
+            schematicCableGroup.add(new THREE.Mesh(tubeGeo1, tubeMat1));
+
+            const path2 = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(3, 1.1, -2.4),
+                new THREE.Vector3(3, 0.4, -2.4),
+                new THREE.Vector3(12, 0.4, -2.4)
+            ]);
+            const tubeGeo2 = new THREE.TubeGeometry(path2, 40, 0.025, 8, false);
+            const tubeMat2 = new THREE.MeshBasicMaterial({ color: 0xeab308 });
+            schematicCableGroup.add(new THREE.Mesh(tubeGeo2, tubeMat2));
+
+            schematicCableGroup.visible = false;
+            scene.add(schematicCableGroup);
+        }
+
+        function buildSensorBeams() {
+            sensorBeamsGroup = new THREE.Group();
+
+            const beamLocations = [
+                { x: -24, z: 10 }, { x: -6, z: 10 }, { x: 8, z: -2 }, { x: -4, z: -2 }
+            ];
+
+            beamLocations.forEach(loc => {
+                const geo = new THREE.CylinderGeometry(0.005, 0.005, 0.8, 8);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.85 });
+                const beam = new THREE.Mesh(geo, mat);
+                beam.rotation.x = Math.PI / 2;
+                beam.position.set(loc.x, 0.98, loc.z);
+                sensorBeamsGroup.add(beam);
+            });
+
+            sensorBeamsGroup.visible = false;
+            scene.add(sensorBeamsGroup);
+        }
+
+        function createCanMesh(isDefective = false) {
+            const canGroup = new THREE.Group();
+            const defectType = isDefective ? Math.floor(Math.random() * 3) : -1;
+
+            const canGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.36, 24, 12);
+            
+            if (defectType === 1) {
+                const pos = canGeo.attributes.position;
+                for (let i = 0; i < pos.count; i++) {
+                    const y = pos.getY(i);
+                    const x = pos.getX(i);
+                    const z = pos.getZ(i);
+                    if (y > 0.06 && y < 0.28 && x > 0.02) {
+                        pos.setX(i, x * 0.62);
+                        pos.setZ(i, z * 0.72);
+                    }
+                }
+                canGeo.computeVertexNormals();
+            }
+
+            let canMat = new THREE.MeshStandardMaterial({ 
+                color: isDefective ? 0xf43f5e : 0x38bdf8, 
+                metalness: isPolarizerActive ? 0.3 : 0.85, 
+                roughness: isPolarizerActive ? 0.6 : 0.2 
+            });
+
+            const canBody = new THREE.Mesh(canGeo, canMat);
+            canBody.position.y = 0.18;
+            canBody.castShadow = true;
+            canGroup.add(canBody);
+
+            let rimGeo = new THREE.TorusGeometry(0.115, 0.012, 12, 24);
+            
+            if (defectType === 0) {
+                const pos = rimGeo.attributes.position;
+                for (let i = 0; i < pos.count; i++) {
+                    const x = pos.getX(i);
+                    const y = pos.getY(i);
+                    if (x > 0.04) {
+                        pos.setX(i, x * 1.55);
+                        pos.setY(i, y + (Math.random() - 0.5) * 0.04);
+                    }
+                }
+                rimGeo.computeVertexNormals();
+            }
+
+            const rimMat = new THREE.MeshStandardMaterial({ 
+                color: defectType === 0 ? 0xff2952 : 0xf8fafc, 
+                metalness: 0.95,
+                roughness: 0.1 
+            });
+
+            const rim = new THREE.Mesh(rimGeo, rimMat);
+            rim.rotation.x = Math.PI / 2;
+            rim.position.y = 0.36;
+
+            if (defectType === 2) {
+                rim.rotation.z = 0.32;
+                rim.position.set(0.02, 0.35, 0.01);
+            }
+
+            canGroup.add(rim);
+
+            if (defectType === 0) {
+                const flangeGeo = new THREE.ConeGeometry(0.045, 0.08, 10, 1, true);
+                const flangeMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, metalness: 0.95, roughness: 0.1, side: THREE.DoubleSide });
+                const flange = new THREE.Mesh(flangeGeo, flangeMat);
+                flange.rotation.z = -Math.PI / 2.8;
+                flange.position.set(0.14, 0.365, 0);
+                canGroup.add(flange);
+            }
+
+            canGroup.position.set(WAYPOINTS[0].x, WAYPOINTS[0].y, WAYPOINTS[0].z);
+
+            canGroup.userData = {
+                currentWaypoint: 0,
+                isDefective: isDefective,
+                defectType: defectType,
+                hasBeenInspected: false,
+                isRejected: false
+            };
+
+            return canGroup;
+        }
+
+        function spawnCan() {
+            if (activeFault === 'jam') return;
+            const isDefective = forceDefectNext || Math.random() < 0.12;
+            forceDefectNext = false;
+            const can = createCanMesh(isDefective);
+            scene.add(can);
+            cans.push(can);
+        }
+
+        function updateCans(delta) {
+            const speed = 4.5 * lineSpeedFactor;
+
+            for (let i = cans.length - 1; i >= 0; i--) {
+                const can = cans[i];
+
+                if (can.userData.isRejected) {
+                    // Knock-off animation
+                    can.position.z += delta * 6;
+                    can.position.y -= delta * 3;
+                    can.rotation.x += delta * 10;
+                    if (can.position.z > 5 || can.position.y < 0) {
+                        scene.remove(can);
+                        cans.splice(i, 1);
+                    }
+                    continue;
+                }
+
+                if (activeFault === 'jam' && can.userData.currentWaypoint === 1) {
+                    continue; // Station 2 Jam
+                }
+
+                const targetWp = WAYPOINTS[can.userData.currentWaypoint + 1];
+                if (!targetWp) {
+                    scene.remove(can);
+                    cans.splice(i, 1);
+                    continue;
+                }
+
+                const dir = new THREE.Vector3(targetWp.x - can.position.x, targetWp.y - can.position.y, targetWp.z - can.position.z);
+                const dist = dir.length();
+
+                if (dist < 0.12) {
+                    can.userData.currentWaypoint++;
+
+                    // Station 10 (KEYENCE Vision)
+                    if (targetWp.station === 10 && !can.userData.hasBeenInspected) {
+                        performCameraInspection(can);
+                        can.userData.hasBeenInspected = true;
+                    }
+
+                    // Station 10.5 (Reject Point)
+                    if (targetWp.station === 10.5 && can.userData.isDefective && !can.userData.isRejected) {
+                        if (activeFault !== 'pressure') {
+                            triggerPneumaticAirBlast();
+                            can.userData.isRejected = true;
+                        }
+                    }
+                } else {
+                    dir.normalize();
+                    can.position.addScaledVector(dir, speed * delta);
+                }
+            }
+        }
+
+        function performCameraInspection(can) {
+            stats.total++;
+            const isNG = can.userData.isDefective;
+
+            const viewCircle = document.getElementById('simulated-can-view');
+            const resultText = document.getElementById('vision-result-overlay');
+            const defectBox = document.getElementById('defect-indicator-box');
+
+            if (isNG) {
+                stats.ng++;
+                viewCircle.className = "w-20 h-20 rounded-full border-4 border-rose-500 bg-gradient-to-br from-rose-900 to-slate-800 flex items-center justify-center shadow-inner pulse-glow-red relative";
+                
+                const defectLabels = [
+                    "DEFECT: FLANGED / BENT LIP",
+                    "DEFECT: DENTED CAN BODY",
+                    "DEFECT: COCKED / CRUSHED RIM"
+                ];
+                const typeText = can.userData.defectType >= 0 ? defectLabels[can.userData.defectType] : "DEFECT: LIP DENT / FLANGE FLICK";
+                
+                resultText.innerText = "NG DEFECT";
+                resultText.className = "font-bold text-[10px] text-rose-400";
+                defectBox.innerText = typeText;
+                defectBox.classList.remove('hidden');
+            } else {
+                stats.good++;
+                viewCircle.className = "w-20 h-20 rounded-full border-4 border-emerald-400 bg-gradient-to-br from-slate-400 to-slate-700 flex items-center justify-center shadow-inner pulse-glow-green relative";
+                resultText.innerText = "PASS";
+                resultText.className = "font-bold text-[10px] text-emerald-400";
+                defectBox.classList.add('hidden');
+            }
+
+            document.getElementById('stat-total').innerText = stats.total;
+            document.getElementById('stat-good').innerText = stats.good;
+            document.getElementById('stat-ng').innerText = stats.ng;
+            const yieldRate = stats.total > 0 ? ((stats.good / stats.total) * 100).toFixed(1) : "100";
+            document.getElementById('stat-rate').innerText = yieldRate + "%";
+        }
+
+        function triggerPneumaticAirBlast() {
+            if (solenoidValve) solenoidValve.material.color.setHex(0xef4444);
+            if (airBlastMesh) airBlastMesh.material.opacity = 0.8;
+
+            setTimeout(() => {
+                if (solenoidValve) solenoidValve.material.color.setHex(0x0284c7);
+                if (airBlastMesh) airBlastMesh.material.opacity = 0;
+            }, 180);
+        }
+
+        function toggleHeatmap() {
+            isHeatmapActive = !isHeatmapActive;
+            const btn = document.getElementById('btn-heatmap');
+            
+            scene.traverse((obj) => {
+                if (obj.isMesh && obj.userData && obj.userData.stationId) {
+                    if (isHeatmapActive) {
+                        obj.material = new THREE.MeshBasicMaterial({ color: 0xef4444, wireframe: true });
+                    }
+                }
+            });
+
+            btn.className = isHeatmapActive ? 
+                "px-2.5 py-1.5 rounded-lg bg-amber-600 text-white transition flex items-center gap-1.5 border border-amber-400 font-bold" :
+                "px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-slate-700";
+        }
+
+        function toggleSchematics() {
+            isSchematicsActive = !isSchematicsActive;
+            if (schematicCableGroup) schematicCableGroup.visible = isSchematicsActive;
+            const btn = document.getElementById('btn-schematics');
+            btn.className = isSchematicsActive ?
+                "px-2.5 py-1.5 rounded-lg bg-cyan-600 text-white transition flex items-center gap-1.5 border border-cyan-400 font-bold" :
+                "px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-slate-700";
+        }
+
+        function toggleBeams() {
+            isBeamsActive = !isBeamsActive;
+            if (sensorBeamsGroup) sensorBeamsGroup.visible = isBeamsActive;
+            const btn = document.getElementById('btn-beams');
+            btn.className = isBeamsActive ?
+                "px-2.5 py-1.5 rounded-lg bg-yellow-600 text-white transition flex items-center gap-1.5 border border-yellow-400 font-bold" :
+                "px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition flex items-center gap-1.5 border border-slate-700";
+        }
+
+        function togglePolarizer() {
+            isPolarizerActive = !isPolarizerActive;
+            const btn = document.getElementById('btn-polarizer');
+            const glare = document.getElementById('glare-overlay');
+
+            if (isPolarizerActive) {
+                btn.innerText = "ON (Polarized Pass)";
+                btn.className = "px-2.5 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold";
+                glare.classList.add('hidden');
+            } else {
+                btn.innerText = "OFF (Glare High)";
+                btn.className = "px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded text-[10px] font-bold";
+                glare.classList.remove('hidden');
+            }
+        }
+
+        function setLightingMode(mode) {
+            currentLightingMode = mode;
+            ['ring', 'darkfield', 'dome'].forEach(m => {
+                const el = document.getElementById(`opt-${m}`);
+                if (m === mode) {
+                    el.className = "px-2 py-1 bg-blue-600 text-white rounded text-[10px] font-medium transition";
+                } else {
+                    el.className = "px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-medium transition";
+                }
+            });
+
+            if (ringLight) {
+                if (mode === 'darkfield') ringLight.material.color.setHex(0xd97706);
+                else if (mode === 'dome') ringLight.material.color.setHex(0xffffff);
+                else ringLight.material.color.setHex(0x38bdf8);
+            }
+        }
+
+        function triggerFault(type) {
+            activeFault = type;
+            const banner = document.getElementById('alarm-banner');
+            const text = document.getElementById('alarm-text');
+
+            if (type === 'jam') {
+                text.innerText = "PLC ALARM: CONVEYOR CAN JAM AT STATION 2 COMBINER";
+            } else if (type === 'pressure') {
+                text.innerText = "PNEUMATIC WARNING: 1/4\" NPT LOW PRESSURE DROP (REJECT DISABLED)";
+            }
+            banner.classList.remove('hidden');
+        }
+
+        function clearFaults() {
+            activeFault = null;
+            document.getElementById('alarm-banner').classList.add('hidden');
+        }
+
+        function updateThreshold(val) {
+            document.getElementById('thresh-label').innerText = `Limit: ${val}`;
+            document.getElementById('histogram-val').innerText = `TH: ${val}/255`;
+        }
+
+        function startGuidedTour() {
+            isTourRunning = true;
+            tourStep = 1;
+            runTourStep();
+        }
+
+        function runTourStep() {
+            if (tourStep > 13) {
+                isTourRunning = false;
+                setView('overview');
+                return;
+            }
+
+            jumpToStation(tourStep);
+            tourStep++;
+            setTimeout(() => {
+                if (isTourRunning) runTourStep();
+            }, 3000);
+        }
+
+        function openOEEModal() {
+            document.getElementById('modal-oee').classList.remove('hidden');
+            const qualityRate = stats.total > 0 ? (stats.good / stats.total) * 100 : 100;
+            const oee = (0.965 * 0.981 * (qualityRate / 100)) * 100;
+            
+            document.getElementById('oee-qual').innerText = qualityRate.toFixed(1) + "%";
+            document.getElementById('oee-overall').innerText = oee.toFixed(1) + "%";
+        }
+
+        function closeOEEModal() {
+            document.getElementById('modal-oee').classList.add('hidden');
+        }
+
+        function exportShiftReport() {
+            const reportContent = `220 CPM Canning Line - Quality Shift Summary
+----------------------------------------------
+Timestamp: ${new Date().toLocaleString()}
+Total Cans Inspected: ${stats.total}
+GOOD Cans Pass: ${stats.good}
+NG Defect Rejects: ${stats.ng}
+Yield Rate: ${stats.total > 0 ? ((stats.good / stats.total) * 100).toFixed(2) : 100}%
+Camera System: KEYENCE VS-C320MX
+Operational Status: Nominal
+----------------------------------------------`;
+
+            const blob = new Blob([reportContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Quality_Shift_Report_${Date.now()}.txt`;
+            a.click();
+        }
+
+        function jumpToStation(stationId) {
+            const stId = parseInt(stationId);
+            showStationSpecs(stId);
+
+            const wp = WAYPOINTS.find(w => Math.floor(w.station) === stId);
+            if (!wp) return;
+
+            smoothMoveCamera(new THREE.Vector3(wp.x, wp.y + 2.5, wp.z + 4.5), new THREE.Vector3(wp.x, wp.y + 0.5, wp.z));
+        }
+
+        function setView(viewName) {
+            let pos, look;
+
+            switch (viewName) {
+                case 'overview':
+                    pos = new THREE.Vector3(0, 28, 35);
+                    look = new THREE.Vector3(0, 1, 4);
+                    break;
+                case 'depalletizer':
+                    pos = new THREE.Vector3(-22, 6, 18);
+                    look = new THREE.Vector3(-20, 1, 10);
+                    break;
+                case 'filler':
+                    pos = new THREE.Vector3(3, 5, 17);
+                    look = new THREE.Vector3(3, 1.2, 10);
+                    break;
+                case 'inspection':
+                    pos = new THREE.Vector3(8, 3.2, 3.5);
+                    look = new THREE.Vector3(8, 1.2, -2);
+                    break;
+                case 'packaging':
+                    pos = new THREE.Vector3(-18, 5, 5);
+                    look = new THREE.Vector3(-18, 1, -2);
+                    break;
+            }
+
+            smoothMoveCamera(pos, look);
+        }
+
+        function smoothMoveCamera(targetPos, targetLookAt) {
+            const duration = 1000;
+            const startPos = camera.position.clone();
+            const startLook = controls.target.clone();
+            const startTime = performance.now();
+
+            function animateCam(time) {
+                const elapsed = time - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easeProgress = 0.5 - Math.cos(progress * Math.PI) / 2;
+
+                camera.position.lerpVectors(startPos, targetPos, easeProgress);
+                controls.target.lerpVectors(startLook, targetLookAt, easeProgress);
+                controls.update();
+
+                if (progress < 1) requestAnimationFrame(animateCam);
+            }
+            requestAnimationFrame(animateCam);
+        }
+
+        function onPointerDown(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            if (intersects.length > 0) {
+                let obj = intersects[0].object;
+                while (obj && !obj.userData.stationId && obj.parent) {
+                    obj = obj.parent;
+                }
+
+                if (obj && obj.userData.stationId) {
+                    jumpToStation(obj.userData.stationId);
+                    document.getElementById('station-select').value = obj.userData.stationId;
+                }
+            }
+        }
+
+        function showStationSpecs(id) {
+            const spec = {
+                1: { title: "1. Empty Can Depalletizer", fr: "FR-01, FR-04", tr: "TR-01, TR-04", desc: "High-level sweep depalletizer removing empty aluminum cans.", details: "Pneumatic layer pad removal and motor-driven sweep bar kinetics." },
+                2: { title: "2. Single File Combiner", fr: "FR-01, FR-02", tr: "TR-01, TR-02", desc: "Multi-lane to single-lane tabletop chain combiner.", details: "Tapered guide rails prevent tipping at 220 CPM." },
+                3: { title: "3. Invert, Clean & Print", fr: "FR-07, FR-08", tr: "TR-07, TR-08", desc: "Twist-rinser cage with ionized air mist and bottom inkjet coder.", details: "Enclosed spray particles with date code legibility checks." },
+                4: { title: "4. Orientation Check Station", fr: "FR-01, FR-03", tr: "TR-01, TR-03", desc: "High/low optical photo-eye sensor array.", details: "Verifies vertical orientation before entering the filler." },
+                5: { title: "5. Rotary Filler (CO2 Flush)", fr: "FR-04, FR-05", tr: "TR-04, TR-05", desc: "12-head counter-pressure rotary filling carousel.", details: "360° continuous rotation kinetics with CO2 pre-purge." },
+                6: { title: "6. Lid Seamer (4500 RPM)", fr: "FR-04, FR-09", tr: "TR-04, TR-09", desc: "4-head heavy-duty mechanical seaming turret.", details: "Double-seams lids at high RPM direct-synchronized with filler." },
+                7: { title: "7. Can Washer Tunnel", fr: "FR-12, FR-13", tr: "TR-12, TR-13", desc: "High-pressure freshwater spray rinse tunnel.", details: "Particle mist animation cleans foam droplets off can rims." },
+                8: { title: "8. Condensation Blower", fr: "FR-12, FR-13", tr: "TR-12, TR-13", desc: "High-velocity air knife blower system.", details: "Blasts water droplets off cans prior to optical inspection." },
+                9: { title: "9. Sleeve Labeling Machine", fr: "FR-08, FR-10", tr: "TR-08, TR-10", desc: "Rotary sleeve applicator and shrink tunnel.", details: "Applies shrink sleeves with thermal heat tunnel." },
+                10: { title: "10. KEYENCE Vision Inspection", fr: "FR-01 to FR-30", tr: "TR-01 to TR-30", desc: "KEYENCE VS-C320MX camera with linear slide rail (FR-29) and solenoid reject (FR-23).", details: "Projected optical laser plane, optics controls, and threshold histogram." },
+                11: { title: "11. Mass Accumulation Table", fr: "FR-04, FR-24", tr: "TR-04, TR-24", desc: "Bi-directional modular chain table for buffer storage.", details: "Prevents line stoppage during carton reloading." },
+                12: { title: "12. PakTech Packaging Machine", FR: "FR-24, FR-25", tr: "TR-24, TR-25", desc: "Automatic applicator snapping plastic handles onto cans.", details: "Reciprocating plunger head assembly kinetics." },
+                13: { title: "13. Manual Palletizing Station", fr: "FR-24", tr: "TR-24", desc: "Finished product staging roller conveyor and pallet jack bay.", details: "Stacks 24-can cartons onto wooden shipping pallets." }
+            }[id];
+
+            if (!spec) return;
+
+            document.getElementById('inspector-title').innerText = spec.title;
+            const body = document.getElementById('inspector-body');
+            body.innerHTML = `
+                <div class="space-y-2">
+                    <div class="p-2 bg-blue-950/60 border border-blue-800 rounded-lg">
+                        <span class="font-bold text-blue-300 block mb-0.5">${spec.title}</span>
+                        <p class="text-[11px] text-slate-300">${spec.desc}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                        <div class="p-2 bg-slate-800/80 rounded border border-slate-700">
+                            <span class="text-amber-400 block font-bold">Functional:</span>
+                            <span class="text-slate-300">${spec.fr}</span>
+                        </div>
+                        <div class="p-2 bg-slate-800/80 rounded border border-slate-700">
+                            <span class="text-cyan-400 block font-bold">Technical:</span>
+                            <span class="text-slate-300">${spec.tr}</span>
+                        </div>
+                    </div>
+                    <div class="p-2 bg-slate-800/50 rounded border border-slate-700 text-[11px]">
+                        <span class="text-slate-400 font-semibold block mb-0.5">Integration Specs:</span>
+                        <p class="text-slate-300">${spec.details}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setupUIListeners() {
+            const speedSlider = document.getElementById('speed-slider');
+            speedSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                lineSpeedFactor = val / 220;
+                canSpawnInterval = val > 0 ? (220 / val) * 600 : 999999;
+                document.getElementById('speed-val').innerText = val + " CPM";
+                document.getElementById('stat-cpm').innerText = val + " CPM";
+            });
+
+            const railSlider = document.getElementById('rail-height-slider');
+            railSlider.addEventListener('input', (e) => {
+                const mm = parseInt(e.target.value);
+                cameraHeightOffset = mm / 100;
+                document.getElementById('rail-height-val').innerText = mm + " mm";
+                if (cameraSlideGroup) {
+                    cameraSlideGroup.position.y = (cameraHeightOffset - 0.5) * 0.6;
+                }
+            });
+
+            const btnRun = document.getElementById('btn-toggle-run');
+            btnRun.addEventListener('click', () => {
+                isRunning = !isRunning;
+                const badge = document.getElementById('line-status-badge');
+                if (isRunning) {
+                    btnRun.innerHTML = '<i class="fa-solid fa-pause"></i> Pause Line';
+                    btnRun.className = "flex-1 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 shadow";
+                    badge.innerText = "RUNNING";
+                    badge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40";
+                } else {
+                    btnRun.innerHTML = '<i class="fa-solid fa-play"></i> Resume Line';
+                    btnRun.className = "flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 shadow";
+                    badge.innerText = "PAUSED";
+                    badge.className = "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40";
+                }
+            });
+
+            const btnDefect = document.getElementById('btn-inject-defect');
+            btnDefect.addEventListener('click', () => {
+                forceDefectNext = true;
+                btnDefect.className = "flex-1 py-1.5 bg-rose-500 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1 shadow animate-pulse";
+                setTimeout(() => {
+                    btnDefect.className = "flex-1 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 shadow";
+                }, 1000);
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        let lastTime = 0;
+        function animate(time) {
+            requestAnimationFrame(animate);
+
+            const delta = (time - lastTime) / 1000 || 0.016;
+            lastTime = time;
+
+            if (isRunning && activeFault !== 'jam') {
+                if (fillerCarousel) fillerCarousel.rotation.y += delta * lineSpeedFactor * 2;
+                if (seamerTurret) seamerTurret.rotation.y += delta * lineSpeedFactor * 5;
+                if (depalSweepBar) depalSweepBar.position.x = Math.sin(time * 0.003) * 0.6;
+                if (pakTechPressHead) pakTechPressHead.position.y = 1.1 + Math.sin(time * 0.008) * 0.15;
+
+                if (rinseParticles) rinseParticles.rotation.y += delta;
+                if (washParticles) washParticles.rotation.y += delta * 1.5;
+                if (airKnifeParticles) airKnifeParticles.rotation.x += delta * 2;
+            }
+
+            if (isRunning && time > nextCanSpawnTime) {
+                spawnCan();
+                nextCanSpawnTime = time + canSpawnInterval;
+            }
+
+            updateCans(delta);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Attach UI functions to global window object for HTML inline handlers
+        window.jumpToStation = jumpToStation;
+        window.setView = setView;
+        window.toggleHeatmap = toggleHeatmap;
+        window.toggleSchematics = toggleSchematics;
+        window.toggleBeams = toggleBeams;
+        window.togglePolarizer = togglePolarizer;
+        window.setLightingMode = setLightingMode;
+        window.triggerFault = triggerFault;
+        window.clearFaults = clearFaults;
+        window.updateThreshold = updateThreshold;
+        window.startGuidedTour = startGuidedTour;
+        window.openOEEModal = openOEEModal;
+        window.closeOEEModal = closeOEEModal;
+        window.exportShiftReport = exportShiftReport;
+
+        window.onload = function () {
+            init3D();
+        };
+    </script>
+</body>
+</html>
