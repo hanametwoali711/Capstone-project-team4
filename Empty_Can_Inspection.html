@@ -166,17 +166,17 @@
                 <span class="text-slate-300 font-bold flex items-center gap-1.5">
                     <i class="fa-solid fa-wine-bottle text-amber-400"></i> Production Can Size:
                 </span>
-                <span id="gantry-height-label" class="text-[10px] font-mono text-sky-400">Z-Cam: 4.60m</span>
+                <span id="gantry-height-label" class="text-[10px] font-mono text-sky-400">Z-Cam: 4.60 (scene units)</span>
             </div>
             <div class="grid grid-cols-3 gap-1.5 text-xs pt-1">
                 <button id="btn-size-12" onclick="setCanSize('12oz')" class="py-1.5 px-2 rounded-lg bg-amber-500 text-slate-950 font-bold text-center border border-amber-400 shadow">
-                    12 oz <span class="block text-[9px] font-normal opacity-90">Std 4.8"</span>
+                    12 Standard <span class="block text-[9px] font-normal opacity-90">122.7 mm</span>
                 </button>
                 <button id="btn-size-16" onclick="setCanSize('16oz')" class="py-1.5 px-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 text-center">
-                    16 oz <span class="block text-[9px] font-normal text-slate-400">Tall 6.2"</span>
+                    16 Pint <span class="block text-[9px] font-normal text-slate-400">157.2 mm</span>
                 </button>
                 <button id="btn-size-19" onclick="setCanSize('19.2oz')" class="py-1.5 px-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 text-center">
-                    19.2 oz <span class="block text-[9px] font-normal text-slate-400">King 7.0"</span>
+                    19.2 Tall <span class="block text-[9px] font-normal text-slate-400">182.6 mm</span>
                 </button>
             </div>
             <p class="text-[10px] text-slate-400 pt-1 leading-tight"><i class="fa-solid fa-arrows-up-down text-sky-400 mr-1"></i>Keyence optics & LED ring automatically auto-elevate on gantry post for focal plane alignment.</p>
@@ -420,14 +420,14 @@
 
         let activeCanSize = '12oz'; // Options: 12oz, 16oz, 19.2oz
         const canSizeHeights = {
-            '12oz': 1.4,
-            '16oz': 1.78,
-            '19.2oz': 2.08
+            '12oz': 1.4000, // 122.7 mm
+            '16oz': 1.7935, // 157.2 mm
+            '19.2oz': 2.0833 // 182.6 mm
         };
         const cameraGantryYPos = {
             '12oz': 4.60,
-            '16oz': 4.98,
-            '19.2oz': 5.28
+            '16oz': 4.9935,
+            '19.2oz': 5.2833
         };
 
         const objectsToExplode = [];
@@ -847,7 +847,7 @@
             const bodyRadius = 0.45;
             const neckRadius = 0.38;
             const baseRadius = 0.38;
-            const bodyHeight = Math.max(0.6, h - 0.45);
+            const bodyHeight = Math.max(0.6, h - 0.505); // Include rim thickness in total height
 
             const canBodyMat = new THREE.MeshStandardMaterial({ 
                 map: window.canLabelTexture,
@@ -1003,7 +1003,7 @@
             }
 
             const targetY = cameraGantryYPos[sizeKey];
-            document.getElementById('gantry-height-label').innerText = `Z-Cam: ${targetY.toFixed(2)}m`;
+            document.getElementById('gantry-height-label').innerText = `Z-Cam: ${targetY.toFixed(2)} (scene units)`;
 
             // Animate Motorized Gantry Elevation for Camera & Ring Light
             const startY = cameraSubAssemblyGroup.position.y;
