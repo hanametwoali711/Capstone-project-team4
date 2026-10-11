@@ -504,7 +504,7 @@ window.addEventListener('unhandledrejection',function(e){
 
     <div class="muted">
 
-     14 production steps · post-X-ray mass conveyor · packaging single-file merge and accumulation loop · 3D concept simulation
+     14 production steps · post-X-ray mass conveyor · accumulation loop · selectable carton / black-cap six-pack packaging · tray loader · pallet · 3D concept simulation
 
     </div>
 
@@ -625,6 +625,15 @@ window.addEventListener('unhandledrejection',function(e){
     </button>
 
    </div>
+
+   <div class="hint" style="margin-top:8px">
+    <b>Packaging mode (one at a time)</b>
+   </div>
+   <select id="packmode" style="width:100%;margin:6px 0 12px">
+    <option value="carton">Carton box</option>
+    <option value="sixpack">6-pack</option>
+   </select>
+   <div class="hint" id="packmode-status">Active: Carton box</div>
 
    <div class="hint">
 
@@ -904,7 +913,7 @@ scene.add(grid);
 
 // lower run (left to right), accumulation loop, then packaging run to the far right.
 
-const routePts=[[22,12],[-25,12],[-27,10],[-27,7],[-25,5],[21,5],[24,3],[24,-3],[21,-6],[-20,-6],[-22,-8],[-22,-11],[-17,-15],[3,-15],[7,-15],[14,-15],[18,-18],[29,-18]];
+const routePts=[[22,12],[-25,12],[-27,10],[-27,7],[-25,5],[21,5],[24,3],[24,-3],[21,-6],[-20,-6],[-22,-8],[-22,-11],[-17,-15],[3,-15],[7,-15],[13,-15]];
 
 // Move cans from depalletizer on upper-right to left; subsequent lower line and packaging.
 
@@ -1134,6 +1143,7 @@ function addInfeedCan() {
 
 }
 
+// Keep incoming cans nearly touching (about 0.33 units center-to-center at 220 CPM).
 // Feed cans physically into the single-file route; never create a second stream.
 const COMBINER_EXIT_X = 7.1;
 let nextHandoffTime = 0;
@@ -1147,7 +1157,7 @@ function updateInfeed(dt) {
     for (let i = infeedCans.length - 1; i >= 0; i--) {
         const item = infeedCans[i];
         // Queue at the narrow outlet until the previous can has cleared.
-        const proposedX = item.x - dt * (speed / 220) * 3.1;
+        const proposedX = item.x - dt * (speed / 220) * 1.2;
         item.x = Math.max(COMBINER_EXIT_X, proposedX);
         const progress = THREE.MathUtils.clamp((23.1 - item.x) / 16, 0, 1);
         const converge = progress * progress * (3 - 2 * progress);
@@ -1162,7 +1172,7 @@ function updateInfeed(dt) {
     }
 }
 
-const stationDefs=[ [1,'Empty can depalletizing','Pallets of empty aluminum cans are unloaded and fed onto the mass conveyor.',22,12], [2,'Manual inspection / mass-flow combiner','Manual inspection area and narrowing combiner guides: cans arrive in a wide mass flow and become single-file. No operator is depicted.',7,12], [3,'Invert, clean & print','Cans invert for ionized-air/vacuum cleaning and receive bottom date/lot coding.',-12,12], [4,'Orientation check','Upper/lower sensors detect cans that emerge horizontally from the ionized-air rinse; a dedicated air nozzle ejects them.',-26,6.5], [5,'CO₂ flushing & filling','Rotary filler purges oxygen with CO₂ and fills each can.',-16,5], [6,'Seaming','Lids are applied and mechanically seamed onto filled cans.',-9,5], [7,'Rinse / foam removal','External rinse removes product residue and foam.',-1,5], [8,'Condensation removal','Air knives remove exterior moisture before downstream inspection.',8,5], [9,'Optional labeling','Labels or sleeves may be applied where needed.',16,5], [10,'X-ray fill/lid inspection','Downstream quality check verifies fill level and lid presence.',-13,-6], [11,'Accumulation control','After X-ray rejection, cans spread into mass flow; packaging accepts single-file cans and diverts overflow through a circulating accumulation loop.',3,-11], [12,'Multipack packaging','Six-pack carriers and carton packing (12, 15 or 24 cans).',15,-13], [13,'Tray loading','Completed multipacks or cartons are placed into shipping trays.',20,-18], [14,'Manual palletization','Operators stack finished trays/cartons onto pallets.',28,-18]];
+const stationDefs=[ [1,'Empty can depalletizing','Pallets of empty aluminum cans are unloaded and fed onto the mass conveyor.',22,12], [2,'Manual inspection / mass-flow combiner','Manual inspection area and narrowing combiner guides: cans arrive in a wide mass flow and become single-file. No operator is depicted.',7,12], [3,'Invert, clean & print','Cans invert for ionized-air/vacuum cleaning and receive bottom date/lot coding.',-12,12], [4,'Orientation check','Upper/lower sensors and pneumatic nozzle on the inside of the conveyor eject sideways cans into a blue reject bin just after the U-turn on the outside of the lower conveyor.',-26,6.5], [5,'CO₂ flushing & filling','Rotary filler purges oxygen with CO₂ and fills each can.',-16,5], [6,'Seaming','Lids are applied and mechanically seamed onto filled cans.',-9,5], [7,'Rinse / foam removal','External rinse removes product residue and foam.',-1,5], [8,'Condensation removal','Air knives remove exterior moisture before downstream inspection.',8,5], [9,'Optional labeling','Labels or sleeves may be applied where needed.',16,5], [10,'X-ray fill/lid inspection','Downstream quality check verifies fill level and lid presence.',-13,-6], [11,'Accumulation control','After X-ray rejection, cans spread into mass flow; packaging accepts single-file cans and diverts overflow through a circulating accumulation loop.',3,-11], [12,'Selectable packaging','One packaging mode at a time: six-packs with black caps use one branch and carton boxes use the other; both feed the tray loader.',15,-13], [13,'Carton tray loading','The selected packaged product enters the tray loader; it exits seated inside a cardboard shipping tray.',19.5,-15], [14,'Manual palletization','Finished multipacks and cartons are collected in shipping trays and stacked on a wooden pallet.',31.5,-15]];
 
 const stationObjects=[];
 
@@ -1294,29 +1304,20 @@ function pallets(g,filled=true) {
 
     let g=machineGroup(4);
 
-    // Sensor heads face the can path from both sides of the conveyor.
-
-    for (const side of [-1, 1]) {
-
-        box(.09, 1.3, .09, [0, 1.25, side * .48], M.steel, g);
-
-        box(.28, .18, .23, [0, 1.55, side * .39], M.red, g);
-
-        box(.24, .15, .2, [0, 1.02, side * .39], M.amber, g);
-
+    // U-turn orientation station: inside of curve is toward +X (the main line).
+    // Both sensing heads and the pneumatic jet are on the INSIDE edge.
+    for (const y of [1.02, 1.55]) {
+        box(.12, 1.12, .12, [.73, 1.12, 0], M.steel, g);
+        box(.28, .18, .25, [.57, y, 0], y > 1.3 ? M.red : M.amber, g);
     }
-
-    // Air-reject valve and nozzle, immediately after the sensor.
-
-    box(.35, .38, .32, [-.8, 1.2, -.48], M.dark, g);
-
-    const nozzle = cyl(.055, .08, .38, [-.53, 1.12, -.48], M.amber, g);
-
+    // Air valve and nozzle are downstream of the sensor, still inside (+X).
+    box(.4, .4, .35, [.85, 1.23, -.72], M.dark, g);
+    const nozzle = cyl(.055, .08, .42, [.58, 1.12, -.72], M.amber, g);
     nozzle.rotation.z = Math.PI / 2;
-
-    box(.9, .09, 1.3, [.6, .8, .75], M.steel, g);
-
-    box(1.2, .55, 1.0, [.7, .3, 1.6], M.blue, g);
+    // Blue reject bin is positioned AFTER the conveyor makes its U-turn,
+    // beside the outer edge of the lower straight run (toward negative Z).
+    box(1.25, .09, 1.1, [2.0, .78, -2.3], M.steel, g);
+    box(1.35, .62, 1.25, [2.0, .32, -3.3], M.blue, g);
 
 }
 
@@ -1444,49 +1445,164 @@ function pallets(g,filled=true) {
 
 }
 
-{
+// Stations 12-14 are represented by the detailed selectable packaging
+// branches, shared tray loader, and finished pallet below.
+for(const id of [12,13,14])machineGroup(id);
 
-    let g=machineGroup(12);
-
-    housing(g,3,2.2,2.6,true);
-
-    box(1.4,.45,1.2,[0,2.1,0],M.dark,g);
-
-    for(let i=0;
-
-    i<6;
-
-    i++)cyl(.16,.16,.28,[(i%3-1)*.43,1.4,Math.floor(i/3)*.43-.2],M.bright,g)
-
+// Packaging splits immediately into two machines. No intermediate transfer
+// conveyor is drawn between the packaging machines and the shared tray loader.
+// Carton boxes use the lower (screen-right from the standard overview) branch;
+// black-cap six-packs use the upper branch.
+const endLine=new THREE.Group();scene.add(endLine);
+const packDark=new THREE.MeshStandardMaterial({color:0x222b34,metalness:.4,roughness:.55});
+const packRed=new THREE.MeshStandardMaterial({color:0xd92735,roughness:.38});
+const cartonPrint=new THREE.MeshStandardMaterial({color:0xdda44e,roughness:.85});
+const capBlack=new THREE.MeshStandardMaterial({color:0x101317,metalness:.12,roughness:.52});
+let packagingMode='carton';
+const BELT_TOP=.94;
+function endBelt(a,b,width=1.5){
+ const A=new THREE.Vector3(a[0],.87,a[1]),B=new THREE.Vector3(b[0],.87,b[1]);
+ const d=B.clone().sub(A),mid=A.clone().add(B).multiplyScalar(.5);
+ const belt=box(width,.14,d.length(),mid.toArray(),packDark,endLine);
+ belt.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),d.clone().normalize());
+ const side=new THREE.Vector3(-d.z,0,d.x).normalize();
+ for(const k of [-1,1]){
+  const v=side.clone().multiplyScalar(k*width*.55);
+  tube(A.clone().add(v).add(new THREE.Vector3(0,.22,0)).toArray(),B.clone().add(v).add(new THREE.Vector3(0,.22,0)).toArray(),.04,M.bright,endLine);
+ }
+ for(let i=0;i<=Math.ceil(d.length()/1.65);i++){
+  const q=A.clone().lerp(B,i/Math.ceil(d.length()/1.65));
+  box(.13,.8,.13,[q.x,.41,q.z],M.steel,endLine);
+ }
 }
-
-{
-
-    let g=machineGroup(13);
-
-    housing(g,2.8,2,2.4,true);
-
-    for(let i=0;
-
-    i<4;
-
-    i++)box(.7,.32,.9,[i*.7-1.05,1.1,0],M.cardboard,g)
-
+// The diverter directly joins the two packaging machine inlets.
+endBelt([12.9,-15],[15.1,-11.8],1.18); // 6-pack machine inlet
+endBelt([12.9,-15],[15.1,-18.2],1.18); // carton machine inlet
+endBelt([15.1,-11.8],[17.1,-11.8],1.55); // belt inside 6-pack machine
+endBelt([15.1,-18.2],[17.1,-18.2],1.55); // belt inside carton machine
+// Both packaged outputs enter the same tray loader, with no exposed connecting
+// belt between the machines. A common outfeed goes to the pallet.
+endBelt([18.1,-15],[21.3,-15],2.3); // inside tray loader
+endBelt([21.3,-15],[30.6,-15],2.1); // finished trays to pallet
+const diverter=new THREE.Group();diverter.position.set(13.15,1.13,-15);endLine.add(diverter);
+const diverterArm=box(1.05,.13,.13,[0,0,0],M.amber,diverter);
+function setDiverter(){diverterArm.rotation.y=packagingMode==='carton' ? .5 : -.5;}
+setDiverter();
+// Each branch has a machine immediately after the split.
+for(const [z,isCarton] of [[-11.8,false],[-18.2,true]]){
+ const g=new THREE.Group();g.position.set(16,0,z);endLine.add(g);
+ box(3,2,.16,[0,1.8,-1.06],M.steel,g);
+ box(3,.19,2.25,[0,2.95,0],M.bright,g);
+ for(const x of [-1.45,1.45])for(const side of [-1,1])box(.1,1.95,.1,[x,1.85,side*1.05],M.steel,g);
+ box(2.05,1.3,.045,[0,1.83,1.06],M.glass,g);
+ box(.25,.35,.14,[.88,1.85,1.13],M.blue,g);
+ box(.15,.18,.14,[-.4,3.14,0],isCarton?M.green:M.amber,g);
 }
-
-{
-
-    let g=machineGroup(14);
-
-    pallets(g,false);
-
-    for(let l=0;
-
-    l<3;
-
-    l++)for(let x of [-.55,.55])for(let z of [-.5,.5])box(.85,.37,.75,[x,.4+l*.39,z],M.cardboard,g)
-
+const loaderDetail=new THREE.Group();loaderDetail.position.set(19.6,0,-15);endLine.add(loaderDetail);
+box(4,.23,7.7,[0,3.45,0],M.bright,loaderDetail);
+for(const x of [-1.9,0,1.9])for(const z of [-3.7,3.7])box(.12,2.5,.12,[x,2.14,z],M.steel,loaderDetail);
+for(const z of [-2.4,0,2.4])box(3.8,2.13,.055,[0,2.1,z],M.glass,loaderDetail);
+box(.62,.7,.16,[1.5,2.55,3.84],M.dark,loaderDetail);
+box(.44,.38,.18,[1.5,2.59,3.94],M.blue,loaderDetail);
+for(let i=0;i<3;i++)cyl(.075,.075,.13,[1.4,3.7+i*.14,3.3],i===0?M.green:i===1?M.amber:M.red,loaderDetail);
+const palletDisplay=new THREE.Group();palletDisplay.position.set(31.5,0,-15);endLine.add(palletDisplay);
+for(const z of [-1,0,1])box(3.15,.16,.4,[0,.18,z],M.wood,palletDisplay);
+for(const x of [-1.25,0,1.25])box(.35,.16,2.7,[x,.08,0],M.wood,palletDisplay);
+const palletStacks=new THREE.Group();palletDisplay.add(palletStacks);
+let palletCount=0;
+function makeSixPack(g){
+ for(let i=0;i<6;i++){
+  const x=(i%3-1)*.32,z=(Math.floor(i/3)-.5)*.34;
+  cyl(.14,.14,.48,[x,.34,z],packRed,g,14);
+  cyl(.12,.12,.025,[x,.59,z],M.dark,g,14);
+ }
+ box(1.12,.085,.8,[0,.61,0],capBlack,g);
+ for(let i=0;i<6;i++){
+  const x=(i%3-1)*.32,z=(Math.floor(i/3)-.5)*.34;
+  cyl(.12,.12,.028,[x,.665,z],capBlack,g,14);
+ }
 }
+function makeCarton(g){
+ box(1.12,.7,.86,[0,.39,0],cartonPrint,g);
+ box(1.13,.045,.10,[0,.755,0],M.wood,g);
+ box(.58,.035,.12,[0,.78,.26],M.dark,g);
+}
+function addTray(g){
+ box(1.45,.11,1.13,[0,.035,0],M.cardboard,g);
+ for(const z of [-.55,.55])box(1.45,.24,.07,[0,.16,z],M.cardboard,g);
+ for(const x of [-.71,.71])box(.07,.24,1.13,[x,.16,0],M.cardboard,g);
+}
+function stackOnPallet(kind){
+ const i=palletCount%8,level=Math.floor(i/4);
+ const g=new THREE.Group();palletStacks.add(g);
+ g.position.set((i%2-.5)*1.43,.31+level*.92,(Math.floor(i/2)%2-.5)*1.27);
+ if(kind==='carton')makeCarton(g);else makeSixPack(g);
+ addTray(g);
+ palletCount++;
+ if(palletCount>=8)palletCount=0;
+}
+// Individual loose cans travel into the selected packaging machine.
+// Only after six cans have entered does a finished package emerge.
+const movingPacks=[];
+const packagingInputCans=[];
+let packagingCanCount=0;
+function makePackagingInputCan(kind){
+ const g=new THREE.Group();endLine.add(g);
+ cyl(.145,.145,.46,[0,.24,0],M.bright,g,20);
+ cyl(.13,.13,.018,[0,.48,0],M.dark,g,20);
+ packagingInputCans.push({object:g,kind,progress:0});
+}
+function makeMovingPack(kind){
+ const g=new THREE.Group();endLine.add(g);
+ if(kind==='carton')makeCarton(g);else makeSixPack(g);
+ // Begin at the EXIT of the packaging machine, not its entrance.
+ movingPacks.push({object:g,kind,progress:4.9,trayAdded:false});
+}
+function updateMovingPacks(dt){
+ const pace=dt*(speed/220)*1.2;
+ // Loose aluminum cans enter the packaging machine first.
+ for(let i=packagingInputCans.length-1;i>=0;i--){
+  const item=packagingInputCans[i];item.progress+=pace;
+  const t=item.progress,z0=item.kind==='carton'?-18.2:-11.8;
+  let x,z;
+  if(t<2.9){const u=t/2.9;x=12.9+u*2.2;z=-15+(z0+15)*u;}
+  else{x=15.1+Math.min(t-2.9,2);z=z0;}
+  item.object.position.set(x,BELT_TOP,z);
+  // The can disappears into the machine, never becoming a box at its inlet.
+  if(t>=4.9){
+   endLine.remove(item.object);packagingInputCans.splice(i,1);
+   packagingCanCount++;
+   if(packagingCanCount%6===0)makeMovingPack(item.kind);
+  }
+ }
+ // Completed six-packs or cartons appear at the machine outfeed.
+ for(let i=movingPacks.length-1;i>=0;i--){
+  const item=movingPacks[i];item.progress+=pace;
+  const t=item.progress,z0=item.kind==='carton'?-18.2:-11.8;
+  let x,z;
+  if(t<7.5){const u=(t-4.9)/2.6;x=17.1+u*1.5;z=z0+(-15-z0)*u;}
+  else{x=18.6+(t-7.5);z=-15;}
+  // The tray is installed INSIDE the shared loader, before the outfeed.
+  if(t>=9&&!item.trayAdded){addTray(item.object);item.trayAdded=true;}
+  item.object.visible=!(t>=5.1&&t<9.4);
+  item.object.position.set(x,BELT_TOP,z);
+  if(t>=19.5){
+   stackOnPallet(item.kind);
+   endLine.remove(item.object);movingPacks.splice(i,1);
+  }
+ }
+}
+function changePackagingMode(mode){
+ packagingMode=mode;packagingCanCount=0;
+ for(const item of movingPacks)endLine.remove(item.object);
+ movingPacks.length=0;
+ for(const item of packagingInputCans)endLine.remove(item.object);
+ packagingInputCans.length=0;
+ palletStacks.clear();palletCount=0;setDiverter();
+ document.querySelector('#packmode-status').textContent=mode==='carton'?'Active: Carton box':'Active: 6-pack';
+ document.querySelector('#notice').textContent='Packaging changed to '+(mode==='carton'?'carton boxes':'black-cap six-packs')+'.';
+}
+document.querySelector('#packmode').addEventListener('change',e=>changePackagingMode(e.target.value));
 
 // Downstream pneumatic rejection for failed filled-can X-ray inspections.
 
@@ -1807,8 +1923,11 @@ const combinerExitT = nearestProgress(new THREE.Vector3(7.1, .92, 12));
 const rinseExitT = nearestProgress(new THREE.Vector3(-14.4, .92, 12));
 const orientationT = nearestProgress(new THREE.Vector3(-26, .92, 6.5));
 
-const orientationRejectT = nearestProgress(new THREE.Vector3(-25.5, .92, 5.2));
+// Trigger at the actual air nozzle (station 4 at -26, 6.5; nozzle offset +.58, -.72),
+// not at the old downstream point after the conveyor has already turned.
+const orientationRejectT = nearestProgress(new THREE.Vector3(-25.42, .92, 5.78));
 
+const packagingStartT = nearestProgress(new THREE.Vector3(12.8,.92,-15));
 const xrayT = nearestProgress(new THREE.Vector3(-13, .92, -6));
 
 const xrayRejectT = nearestProgress(XRAY_REJECT_POS);
@@ -1866,6 +1985,7 @@ function update(dt) {
     if(!running)return;
 
     updateInfeed(dt);
+    updateMovingPacks(dt);
 
     for(let i=cans.length-1;
 
@@ -1879,9 +1999,19 @@ function update(dt) {
 
             u.fall+=dt;
 
-            c.position.z+=dt*4;
-
-            c.position.y-=dt*2.6;
+            if(u.rejectType==='orientation') {
+                // The blue bin is after the turn, at station 4 + (2,-3.3).
+                // Move diagonally OUTWARD toward its center instead of into the curve.
+                const targetX=stationDefs[3][3]+2.0;
+                const targetZ=stationDefs[3][4]-3.3;
+                const fraction=Math.min(1,dt*5);
+                c.position.x+=(targetX-c.position.x)*fraction;
+                c.position.z+=(targetZ-c.position.z)*fraction;
+                c.position.y-=dt*1.1;
+            } else {
+                c.position.z+=dt*4;
+                c.position.y-=dt*2.6;
+            }
 
             c.rotation.x+=dt*5;
 
@@ -1918,7 +2048,9 @@ function update(dt) {
         }
         const prev=u.progress;
 
-        u.progress+=dt*(speed/220)*.026;
+        // Match conveyor travel to the 220 CPM feed so consecutive cans
+        // remain closely spaced, with only a small visible gap.
+        u.progress+=dt*(speed/220)*.006;
 
         // The second orientation fault happens at the physical EXIT of the
         // ionized-air rinse/inverting machine, never at an arbitrary position.
@@ -1949,6 +2081,11 @@ function update(dt) {
         if (prev < orientationRejectT && u.progress >= orientationRejectT && u.exitedRinse && u.rinseExitBad) {
             u.rejected = true;
             u.rejectType = 'orientation';
+            u.fall = 0;
+            // Snap to the jet at the exact crossing, avoiding a frame of visual lag
+            // when the simulation is running at accelerated playback speed.
+            const jetPoint = pathAt(orientationRejectT);
+            c.position.set(jetPoint.x, jetPoint.y, jetPoint.z);
             orientationBlastFlash = .25;
             document.querySelector('#notice').textContent = 'Post-rinse orientation sensor: horizontal can rejected at its own air jet.';
             continue;
@@ -1999,6 +2136,10 @@ function update(dt) {
                 document.querySelector('#notice').textContent='Packaging single-file guide occupied: overflow can diverted to circulating accumulation conveyor.';
                 continue;
             }
+        }
+        if(prev<packagingStartT && u.progress>=packagingStartT){
+            makePackagingInputCan(packagingMode);
+            scene.remove(c);cans.splice(i,1);continue;
         }
         if(u.progress>=1) {
 
@@ -2399,7 +2540,7 @@ function animate(now) {
 
     last=now;
 
-    update(dt);
+    update(dt * 3.5);
 
     drawFeed(now);
 
