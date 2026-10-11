@@ -2028,7 +2028,7 @@ function update(dt) {
         // They circulate around the visible loop and wait for a safe opening
         // before rejoining the single-file packaging conveyor.
         if(u.onAccumulationLoop) {
-            const step=dt*(speed/220)*4.1/loopLen;
+            const step=dt*(speed/250)/loopLen;
             u.loopProgress=Math.min(1,u.loopProgress+step);
             if(u.loopProgress>=1) {
                 const mergeBusy=cans.some(other=>other!==c && !other.userData.rejected &&
