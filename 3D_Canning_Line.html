@@ -1,479 +1,241 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
  <head>
-
   <meta charset="utf-8"/>
-
   <meta content="width=device-width,initial-scale=1" name="viewport"/>
-
   <title>
-
    Beer Canning Line — Interactive 3D Engineering Model
-
   </title>
-
   <script type="importmap">
-
    {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
-
   </script>
-
   <style>
-
    * {
-
     box-sizing:border-box
-
 }
-
 body {
-
     margin:0;
-
     background:#0a101b;
-
     color:#e5edf7;
-
     font:13px system-ui,Arial;
-
     overflow:hidden
-
 }canvas {
-
     display:block
-
 }
-
 .panel {
-
     background:#101b2ceF;
-
     border:1px solid #35465e;
-
     border-radius:13px;
-
     box-shadow:0 12px 35px #0007;
-
     backdrop-filter:blur(12px)
-
 }
-
 header {
-
     position:absolute;
-
     top:12px;
-
     left:12px;
-
     right:12px;
-
     z-index:2;
-
     display:flex;
-
     justify-content:space-between;
-
     gap:12px;
-
     pointer-events:none
-
 }
-
 header>* {
-
     pointer-events:auto
-
 }
-
 .heading {
-
     padding:13px 17px
-
 }
-
 .heading strong {
-
     font-size:17px;
-
     color:white
-
 }
-
 .muted {
-
     color:#9aaec8;
-
     font-size:11px
-
 }
-
 .metrics {
-
     display:flex;
-
     gap:18px;
-
     padding:12px 18px;
-
     text-align:center
-
 }
-
 .metrics b {
-
     display:block;
-
     font-size:17px;
-
     color:#68d6fc
-
 }
-
 aside {
-
     position:absolute;
-
     top:98px;
-
     bottom:65px;
-
     z-index:3;
-
     padding:14px;
-
     overflow:auto;
-
     width:265px
-
 }
-
 #left {
-
     left:12px
-
 }
-
 #right {
-
     right:12px;
-
     width:305px
-
 }
-
 h3 {
-
     font-size:12px;
-
     letter-spacing:.09em;
-
     color:#8fbfff;
-
     margin:0 0 12px
-
 }
-
 button,select {
-
     background:#23344b;
-
     color:#e6f2ff;
-
     border:1px solid #415773;
-
     border-radius:8px;
-
     padding:8px 10px;
-
     cursor:pointer;
-
     font:inherit
-
 }
-
 button:hover {
-
     background:#315478
-
 }
-
 button.active {
-
     background:#075dc1;
-
     border-color:#46a4ff
-
 }
-
 button:disabled {
-
     opacity:.45
-
 }
-
 input {
-
     width:100%;
-
     accent-color:#38bdf8
-
 }
-
 .controls {
-
     display:grid;
-
     grid-template-columns:1fr 1fr;
-
     gap:7px;
-
     margin:10px 0
-
 }
-
 .station {
-
     display:flex;
-
     align-items:center;
-
     gap:8px;
-
     text-align:left;
-
     width:100%;
-
     margin:4px 0;
-
     padding:7px
-
 }
-
 .station small {
-
     color:#92a7c2
-
 }
-
 .number {
-
     border-radius:50%;
-
     background:#006dce;
-
     width:23px;
-
     height:23px;
-
     flex:none;
-
     display:grid;
-
     place-items:center;
-
     font-weight:800
-
 }
-
 .station.selected {
-
     background:#174d76;
-
     border-color:#38bdf8
-
 }
-
 .hint {
-
     font-size:11px;
-
     line-height:1.6;
-
     color:#a9bbd0
-
 }
-
 .tag {
-
     display:inline-block;
-
     border-radius:5px;
-
     padding:3px 6px;
-
     background:#123c54;
-
     color:#8fe6ff;
-
     font-size:10px
-
 }
-
 #feed {
-
     width:100%;
-
     aspect-ratio:1.4;
-
     background:#050b13;
-
     border:1px solid #38546d;
-
     border-radius:10px;
-
     display:block;
-
     margin:9px 0
-
 }
-
 #status {
-
     font-weight:800;
-
     color:#4ade80
-
 }
-
 #status.bad {
-
     color:#fb7185
-
 }
-
 .spec {
-
     line-height:1.65;
-
     font-size:12px;
-
     color:#c3d3e6
-
 }
-
 footer {
-
     position:absolute;
-
     bottom:10px;
-
     left:50%;
-
     transform:translateX(-50%);
-
     z-index:2;
-
     padding:10px 16px;
-
     text-align:center;
-
     color:#b8d1e9;
-
     font-size:11px;
-
     white-space:nowrap
-
 }
-
 #notice {
-
     margin-top:10px;
-
     color:#fbbf24;
-
     font-size:11px;
-
     min-height:20px
-
 }
-
 @media(max-width:1050px) {
-
     aside {
-
         width:215px!important
-
     }
-
     #right {
-
         width:255px!important
-
     }
-
     .heading strong {
-
         font-size:13px
-
     }
-
     .metrics {
-
         gap:8px;
-
         padding:9px
-
     }
-
     .metrics b {
-
         font-size:13px
-
     }
-
 }
-
 @media(max-width:700px) {
-
     #left {
-
         top:auto;
-
         bottom:48px;
-
         height:165px;
-
         width:45%!important
-
     }
-
     #right {
-
         top:auto;
-
         bottom:48px;
-
         height:165px;
-
         width:50%!important
-
     }
-
     header {
-
         flex-direction:column
-
     }
-
     .metrics {
-
         align-self:flex-start
-
     }
-
     footer {
-
         display:none
-
     }
-
 }
-
   </style>
-
  <script>
 window.addEventListener('error',function(e){
   const el=document.getElementById('notice');
@@ -485,147 +247,76 @@ window.addEventListener('unhandledrejection',function(e){
 });
 </script>
 </head>
-
  <body>
-
   <div id="stage">
-
   </div>
-
   <header>
-
    <div class="panel heading">
-
     <strong>
-
      BEER CANNING PRODUCTION LINE
-
     </strong>
-
     <div class="muted">
-
      14 production steps · post-X-ray mass conveyor · accumulation loop · selectable carton / black-cap six-pack packaging · tray loader · pallet · 3D concept simulation
-
     </div>
-
    </div>
-
    <div class="panel metrics">
-
     <div>
-
      LINE RATE
-
      <b id="rate">
-
       220 CPM
-
      </b>
-
     </div>
-
     <div>
-
      INSPECTED
-
      <b id="total">
-
       0
-
      </b>
-
     </div>
-
     <div>
-
      PASSED
-
      <b id="good">
-
       0
-
      </b>
-
     </div>
-
     <div>
-
      REJECTED
-
      <b id="reject">
-
       0
-
      </b>
-
     </div>
-
    </div>
-
   </header>
-
   <aside class="panel" id="left">
-
    <h3>
-
     PRODUCTION STATIONS
-
    </h3>
-
    <div id="stations">
-
    </div>
-
   </aside>
-
   <aside class="panel" id="right">
-
    <h3>
-
     SIMULATION CONTROLS
-
    </h3>
-
    <div class="controls">
-
     <button id="pause">
-
      ⏸ Pause
-
     </button>
-
     <button id="overview">
-
      ⌂ Overview
-
     </button>
-
     <button id="focus">
-
      ◎ Inspect Camera
-
     </button>
-
     <button id="inject">
-
      ⚠ Next Defect
-
     </button>
-
     <button id="wire">
-
      ◇ Wireframe
-
     </button>
-
     <button id="labels">
-
      ◉ Labels
-
     </button>
-
    </div>
-
    <div class="hint" style="margin-top:8px">
     <b>Packaging mode (one at a time)</b>
    </div>
@@ -634,389 +325,197 @@ window.addEventListener('unhandledrejection',function(e){
     <option value="sixpack">6-pack</option>
    </select>
    <div class="hint" id="packmode-status">Active: Carton box</div>
-
    <div class="hint">
-
     Conveyor rate
-
     <b id="speedtxt">
-
      220 CPM
-
     </b>
-
    </div>
-
    <input id="speed" max="300" min="40" step="10" type="range" value="220"/>
-
    <div class="hint" style="margin-top:8px">
-
     Can size
-
    </div>
-
    <select id="size" style="width:100%;margin:5px 0 12px">
-
     <option value="12">
-
      12 oz — 122.7 mm
-
     </option>
-
     <option value="16">
-
      16 oz — 157.2 mm
-
     </option>
-
     <option value="19">
-
      19.2 oz — 182.6 mm
-
     </option>
-
    </select>
-
    <h3>
-
     KEYENCE INSPECTION FEED
-
    </h3>
-
    <canvas height="280" id="feed" width="400">
-
    </canvas>
-
    <div id="status">
-
     WAITING FOR CAN
-
    </div>
-
    <div class="hint" id="detail">
-
     Rim / flange, sidewall and incoming orientation (simulated)
-
    </div>
-
    <div style="border-top:1px solid #38506a;margin:13px 0">
-
    </div>
-
    <h3 id="spec-title">
-
     STATION DETAILS
-
    </h3>
-
    <div class="spec" id="spec">
-
     Click equipment or choose a station.
-
    </div>
-
    <div id="notice">
-
    </div>
-
   </aside>
-
   <footer class="panel">
-
    Drag to rotate · Scroll to zoom · Right-drag to pan · Click any station · Camera and reject occur before Step 3 ionized-air rinse / cleaning
-
   </footer>
-
   <script type="module">
-
    import * as THREE from 'three';
-
 import  {
-
     OrbitControls
-
 }
-
 from 'three/addons/controls/OrbitControls.js';
-
 const scene=new THREE.Scene();
-
 scene.background=new THREE.Color(0x0a101b);
-
 scene.fog=new THREE.FogExp2(0x0a101b,.006);
-
 const camera=new THREE.PerspectiveCamera(44,innerWidth/innerHeight,.1,400);
-
 camera.position.set(17,40,49);
-
 const renderer=new THREE.WebGLRenderer( {
-
     antialias:true
-
 });
-
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-
 renderer.setSize(innerWidth,innerHeight);
-
 renderer.shadowMap.enabled=true;
-
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-
 renderer.outputColorSpace=THREE.SRGBColorSpace;
-
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-
 renderer.toneMappingExposure=1.6;
-
 document.querySelector('#stage').appendChild(renderer.domElement);
-
 const orbit=new OrbitControls(camera,renderer.domElement);
-
 orbit.enableDamping=true;
-
 orbit.target.set(0,1,0);
-
 orbit.maxPolarAngle=Math.PI/2-.05;
-
 orbit.minDistance=5;
-
 orbit.maxDistance=115;
-
 scene.add(new THREE.HemisphereLight(0xe8f6ff,0x25384a,2.2));
-
 const sun=new THREE.DirectionalLight(0xffffff,3);
-
 sun.position.set(-18,35,20);
-
 sun.castShadow=true;
-
 sun.shadow.mapSize.set(2048,2048);
-
 sun.shadow.camera.left=-55;
-
 sun.shadow.camera.right=55;
-
 sun.shadow.camera.top=55;
-
 sun.shadow.camera.bottom=-55;
-
 scene.add(sun);
-
 const M= {
-
     steel:new THREE.MeshStandardMaterial( {
-
         color:0xb8c7d1,metalness:.75,roughness:.29
-
     }),bright:new THREE.MeshStandardMaterial( {
-
         color:0xe3edf2,metalness:.8,roughness:.21
-
     }),dark:new THREE.MeshStandardMaterial( {
-
         color:0x2e3b4a,metalness:.5,roughness:.44
-
     }),belt:new THREE.MeshStandardMaterial( {
-
         color:0x232e38,roughness:.8
-
     }),blue:new THREE.MeshStandardMaterial( {
-
         color:0x1767ad,metalness:.4,roughness:.3
-
     }),glass:new THREE.MeshPhysicalMaterial( {
-
         color:0xb4eaff,transparent:true,opacity:.19,roughness:.12,metalness:.1,depthWrite:false
-
     }),amber:new THREE.MeshStandardMaterial( {
-
         color:0xf59e0b,metalness:.35
-
     }),red:new THREE.MeshStandardMaterial( {
-
         color:0xf43f5e,emissive:0x530f1b
-
     }),green:new THREE.MeshStandardMaterial( {
-
         color:0x4ade80,emissive:0x123a1b
-
     }),wood:new THREE.MeshStandardMaterial( {
-
         color:0x936036,roughness:.85
-
     }),cardboard:new THREE.MeshStandardMaterial( {
-
         color:0xc08a49,roughness:.85
-
     })
-
 };
-
 function mesh(g,m,p,parent=scene) {
-
     const o=new THREE.Mesh(g,m);
-
     o.position.set(...p);
-
     o.castShadow=true;
-
     o.receiveShadow=true;
-
     parent.add(o);
-
     return o
-
 }
-
 function box(w,h,d,p,m=M.steel,parent=scene) {
-
     return mesh(new THREE.BoxGeometry(w,h,d),m,p,parent)
-
 }
-
 function cyl(r1,r2,h,p,m=M.steel,parent=scene,n=24) {
-
     return mesh(new THREE.CylinderGeometry(r1,r2,h,n),m,p,parent)
-
 }
-
 function tube(a,b,r=.035,m=M.steel,parent=scene) {
-
     const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=B.clone().sub(A);
-
     const o=cyl(r,r,d.length(),A.clone().add(B).multiplyScalar(.5).toArray(),m,parent,10);
-
     o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
-
     return o
-
 }
-
 const floor=mesh(new THREE.PlaneGeometry(115,82),new THREE.MeshStandardMaterial( {
-
     color:0x182331,roughness:.95
-
 }),[0,-.035,0]);
-
 floor.rotation.x=-Math.PI/2;
-
 floor.castShadow=false;
-
 const grid=new THREE.GridHelper(110,55,0x354459,0x263344);
-
 grid.position.y=.005;
-
 scene.add(grid);
-
 // The winding single-file route mirrors the reference: upper run (right to left), left U-turn,
-
 // lower run (left to right), accumulation loop, then packaging run to the far right.
-
 const routePts=[[22,12],[-25,12],[-27,10],[-27,7],[-25,5],[21,5],[24,3],[24,-3],[21,-6],[-20,-6],[-22,-8],[-22,-11],[-17,-15],[3,-15],[7,-15],[13,-15]];
-
 // Move cans from depalletizer on upper-right to left; subsequent lower line and packaging.
-
 const pts=[...routePts].map(([x,z])=>new THREE.Vector3(x,.92,z));
-
 const path=new THREE.CatmullRomCurve3(pts,false,'catmullrom',.12);
-
 const N=260;
-
 const lengths=path.getLengths(N);
-
 const totalLength=lengths.at(-1);
-
 const pathAt=(t)=>path.getPointAt(Math.max(0,Math.min(1,t)));
-
 // Conveyor is constructed as a smooth, continuous segmented belt with curved turns,
-
 // two stainless side rails, structural posts and individual rollers.
-
 const conveyor=new THREE.Group();
-
 scene.add(conveyor);
-
 const rails=[[],[]];
-
 for(let i=0;
-
 i<=N;
-
 i++) {
-
     const t=i/N,p=pathAt(t),tan=path.getTangentAt(t),perp=new THREE.Vector3(-tan.z,0,tan.x);
-
     for(let k=0;
-
     k<2;
-
     k++)rails[k].push(p.clone().addScaledVector(perp,k?-.46:.46).add(new THREE.Vector3(0,.22,0)));
-
 }
-
 for(let i=0;
-
 i<N;
-
 i++) {
-
     const a=pathAt(i/N),b=pathAt((i+1)/N),v=b.clone().sub(a);
-
     if(v.length()<.0001)continue;
-
     const belt=box(.91,.105,v.length()+.025,a.clone().add(b).multiplyScalar(.5).toArray(),M.belt,conveyor);
-
     belt.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),v.normalize());
-
     if(i%8===0) {
-
         const r=box(.93,.025,.04,a.toArray(),M.dark,conveyor);
-
         r.quaternion.copy(belt.quaternion)
-
     }
-
 }
-
 for(let k=0;
-
 k<2;
-
 k++) {
-
     for(let i=0;
-
     i<N-2;
-
     i+=3) {
-
         const a=rails[k][i],b=rails[k][Math.min(i+3,N)];
-
         tube(a.toArray(),b.toArray(),.036,M.bright,conveyor)
-
     }
-
 }
-
 for(let i=0;
-
 i<N;
-
 i+=32) {
-
     const p=pathAt(i/N);
-
     for(const dz of [-.34,.34]) {
-
         cyl(.052,.07,.86,[p.x,.43,p.z+dz],M.steel,conveyor,10)
-
     }
-
     box(1.1,.15,.95,[p.x,.79,p.z],M.steel,conveyor)
-
 }
-
 // After the X-ray pneumatic rejector, the surviving filled cans spread onto
 // a wide mass-flow conveyor, then funnel back into single file for packaging.
 // Overflow is routed through a separate circulating accumulation loop.
@@ -1070,79 +569,42 @@ const massStartX=-17,massEndX=7;
 const massStartT=0; // progress values assigned after nearestProgress is defined
 let downstreamMassStartT=0,overflowEntryT=0,packagingMergeT=0;
 let overflowSequence=0;
-
 // Wide mass-flow conveyor feeding the single-file combiner at Step 2.
-
 // The initial lane is wider and tapers toward the original single-file route.
-
 const massInfeed = new THREE.Group();
-
 scene.add(massInfeed);
-
 for (let i = 0; i < 46; i++) {
-
     const x = 23.5 - i * 0.36;
-
     const width = 3.8 - 2.9 * (i / 45);
-
     box(.38, .11, width, [x, .92, 12], M.belt, massInfeed);
-
     if (i % 5 === 0) {
-
         box(.07, .16, width + .12, [x, .84, 12], M.steel, massInfeed);
-
     }
-
 }
-
 for (const side of [-1, 1]) {
-
     let previous = null;
-
     for (let i = 0; i <= 46; i++) {
-
         const x = 23.5 - i * .36;
-
         const z = 12 + side * (1.9 - 1.45 * i / 46);
-
         const current = [x, 1.18, z];
-
         if (previous) tube(previous, current, .04, M.bright, massInfeed);
-
         previous = current;
-
     }
-
 }
-
 // Animated mass-flow cans converge through the combiner into one lane.
-
 // Each can is individually animated; the static decorative rows were removed.
-
 const massCans = new THREE.Group();
-
 scene.add(massCans);
-
 const infeedCans = [];
-
 let infeedClock = 0;
-
 function addInfeedCan() {
-
     const lane = Math.floor(Math.random() * 9) - 4;
-
     const g = new THREE.Group();
-
     cyl(.14, .14, .42, [0, .21, 0], M.bright, g, 20);
-
     cyl(.12, .12, .012, [0, .43, 0], M.dark, g, 20);
-
     massCans.add(g);
-
     infeedCans.push({object:g, x:23.1, lane, offset:Math.random()*.09});
-
 }
-
 // Keep incoming cans nearly touching (about 0.33 units center-to-center at 220 CPM).
 // Feed cans physically into the single-file route; never create a second stream.
 const COMBINER_EXIT_X = 7.1;
@@ -1171,139 +633,71 @@ function updateInfeed(dt) {
         }
     }
 }
-
 const stationDefs=[ [1,'Empty can depalletizing','Pallets of empty aluminum cans are unloaded and fed onto the mass conveyor.',22,12], [2,'Manual inspection / mass-flow combiner','Manual inspection area and narrowing combiner guides: cans arrive in a wide mass flow and become single-file. No operator is depicted.',7,12], [3,'Invert, clean & print','Cans invert for ionized-air/vacuum cleaning and receive bottom date/lot coding.',-12,12], [4,'Orientation check','Upper/lower sensors and pneumatic nozzle on the inside of the conveyor eject sideways cans into a blue reject bin just after the U-turn on the outside of the lower conveyor.',-26,6.5], [5,'CO₂ flushing & filling','Rotary filler purges oxygen with CO₂ and fills each can.',-16,5], [6,'Seaming','Lids are applied and mechanically seamed onto filled cans.',-9,5], [7,'Rinse / foam removal','External rinse removes product residue and foam.',-1,5], [8,'Condensation removal','Air knives remove exterior moisture before downstream inspection.',8,5], [9,'Optional labeling','Labels or sleeves may be applied where needed.',16,5], [10,'X-ray fill/lid inspection','Downstream quality check verifies fill level and lid presence.',-13,-6], [11,'Accumulation control','After X-ray rejection, cans spread into mass flow; packaging accepts single-file cans and diverts overflow through a circulating accumulation loop.',3,-11], [12,'Selectable packaging','One packaging mode at a time: six-packs with black caps use one branch and carton boxes use the other; both feed the tray loader.',15,-13], [13,'Carton tray loading','The selected packaged product enters the tray loader; it exits seated inside a cardboard shipping tray.',19.5,-15], [14,'Manual palletization','Finished multipacks and cartons are collected in shipping trays and stacked on a wooden pallet.',31.5,-15]];
-
 const stationObjects=[];
-
 const equipment=new THREE.Group();
-
 scene.add(equipment);
-
 function machineGroup(id) {
-
     const d=stationDefs[id-1],g=new THREE.Group();
-
     g.position.set(d[3],0,d[4]);
-
     g.userData.stationId=id;
-
     equipment.add(g);
-
     stationObjects[id]=g;
-
     return g
-
 }
-
 function housing(g,w=2.4,h=2,d=1.9,transparent=false) {
-
     box(w,.14,d,[0,.93,0],M.steel,g);
-
     for(const x of [-w/2,w/2])for(const z of [-d/2,d/2])box(.08,h,.08,[x,.93+h/2,z],M.steel,g);
-
     box(w,.14,d,[0,.93+h,0],M.bright,g);
-
     if(transparent) {
-
         box(w-.14,h-.15,.025,[0,.93+h/2,d/2],M.glass,g);
-
         box(.025,h-.15,d-.1,[w/2,.93+h/2,0],M.glass,g)
-
     }else {
-
         box(w-.15,h-.15,.045,[0,.93+h/2,d/2],M.steel,g)
-
     }
-
     box(.32,.36,.07,[w*.28,1.55,d/2+.05],M.dark,g);
-
     box(.2,.14,.08,[w*.28,1.55,d/2+.095],M.blue,g);
-
     cyl(.08,.08,.13,[w*.38,.93+h+.12,d*.3],M.green,g)
-
 }
-
 function pallets(g,filled=true) {
-
     for(let k=0;
-
     k<3;
-
     k++)box(1.85,.12,.28,[-.1,.14,k*.58-.58],M.wood,g);
-
     if(filled)for(let l=0;
-
     l<3;
-
     l++)for(let x=-2;
-
     x<=2;
-
     x++)for(let z=-2;
-
     z<=2;
-
     z++) {
-
         const c=cyl(.095,.095,.32,[x*.23,.38+l*.34,z*.23],M.bright,g,12);
-
         c.castShadow=false
-
     }
-
 }
-
 {
-
     let g=machineGroup(1);
-
     housing(g,2.8,2.9,2.6,true);
-
     const pg=new THREE.Group();
-
     pg.position.set(2.5,0,0);
-
     g.add(pg);
-
     pallets(pg);
-
     box(2.8,.12,.15,[0,3.3,0],M.dark,g)
-
 }
-
 {
-
     let g=machineGroup(2);
-
     for(let s of [-1,1])tube([-2,1.2,s*.95],[2,1.2,s*.43],.055,M.bright,g);
-
-
-
 }
-
 {
-
     let g=machineGroup(3);
-
     housing(g,4,2,2.2,true);
-
     for(let x of [-1.15,0,1.15]) {
-
         cyl(.35,.35,.18,[x,2.48,0],M.dark,g);
-
         for(let s of [-1,1])tube([x+s*.24,2.45,0],[x+s*.24,1.25,0],.03,M.steel,g)
-
     }
-
     box(.45,.42,.6,[1.65,1.6,-.7],M.dark,g)
-
 }
-
 {
-
     let g=machineGroup(4);
-
     // U-turn orientation station: inside of curve is toward +X (the main line).
     // Both sensing heads and the pneumatic jet are on the INSIDE edge.
     for (const y of [1.02, 1.55]) {
@@ -1318,137 +712,72 @@ function pallets(g,filled=true) {
     // beside the outer edge of the lower straight run (toward negative Z).
     box(1.25, .09, 1.1, [2.0, .78, -2.3], M.steel, g);
     box(1.35, .62, 1.25, [2.0, .32, -3.3], M.blue, g);
-
 }
-
 {
-
     let g=machineGroup(5);
-
     housing(g,3.5,2.3,3,true);
-
     cyl(1.2,1.2,.45,[0,2.55,0],M.steel,g,48);
-
     for(let i=0;
-
     i<16;
-
     i++) {
-
         let a=i*Math.PI/8;
-
         const x=Math.cos(a)*1,z=Math.sin(a)*1;
-
         cyl(.07,.055,.6,[x,2.1,z],M.bright,g,12)
-
     }
-
     tube([-1.6,3.1,0],[1.6,3.1,0],.1,M.steel,g)
-
 }
-
 {
-
     let g=machineGroup(6);
-
     housing(g,2.3,2.4,2.5,true);
-
     cyl(.78,.78,.35,[0,2.55,0],M.dark,g,32);
-
     for(let i=0;
-
     i<8;
-
     i++) {
-
         const a=i*Math.PI/4;
-
         cyl(.08,.08,.5,[Math.cos(a)*.55,2.1,Math.sin(a)*.55],M.bright,g)
-
     }
-
 }
-
 {
-
     let g=machineGroup(7);
-
     housing(g,3,1.7,1.8,true);
-
     for(let i=-3;
-
     i<=3;
-
     i++)tube([i*.35,2.2,-.65],[i*.35,1.35,-.65],.028,M.blue,g)
-
 }
-
 {
-
     let g=machineGroup(8);
-
     housing(g,2.4,1.5,1.6,true);
-
     for(let i of [-.5,.5]) {
-
         cyl(.35,.35,.35,[i,2.35,0],M.dark,g);
-
         tube([i,2.2,0],[i,1.35,0],.08,M.bright,g)
-
     }
-
 }
-
 {
-
     let g=machineGroup(9);
-
     housing(g,2.4,1.9,2,true);
-
     for(let x of [-.7,.7]) {
-
         const roller=cyl(.42,.42,1.25,[x,1.8,0],M.bright,g);
-
         roller.rotation.z=Math.PI/2
-
     }
-
 }
-
 {
-
     let g=machineGroup(10);
-
     housing(g,2.5,1.8,2,true);
-
     box(.6,.7,.09,[0,1.8,1.07],M.dark,g);
-
     box(.36,.35,.1,[0,1.8,1.13],M.blue,g)
-
 }
-
 {
-
     let g=machineGroup(11);
-
     for(let j=0;
-
     j<3;
-
     j++) {
-
         box(4,.08,.1,[0,1.1,j*.5-.5],M.bright,g)
-
     }
-
     box(.22,.5,.1,[1,1.2,.7],M.amber,g)
-
 }
-
 // Stations 12-14 are represented by the detailed selectable packaging
 // branches, shared tray loader, and finished pallet below.
 for(const id of [12,13,14])machineGroup(id);
-
 // Packaging splits immediately into two machines. No intermediate transfer
 // conveyor is drawn between the packaging machines and the shared tray loader.
 // Carton boxes use the lower (screen-right from the standard overview) branch;
@@ -1603,402 +932,207 @@ function changePackagingMode(mode){
  document.querySelector('#notice').textContent='Packaging changed to '+(mode==='carton'?'carton boxes':'black-cap six-packs')+'.';
 }
 document.querySelector('#packmode').addEventListener('change',e=>changePackagingMode(e.target.value));
-
 // Downstream pneumatic rejection for failed filled-can X-ray inspections.
-
 const XRAY_REJECT_POS = new THREE.Vector3(-18, .92, -6);
-
 const xrayReject = new THREE.Group();
-
 xrayReject.position.set(XRAY_REJECT_POS.x, 0, XRAY_REJECT_POS.z);
-
 xrayReject.userData.stationId = 10;
-
 equipment.add(xrayReject);
-
 box(.13, 1.6, .13, [0, .8, -.72], M.steel, xrayReject);
-
 box(.44, .42, .35, [0, 1.23, -.72], M.dark, xrayReject);
-
 for (let i = -1; i <= 1; i++) {
-
     const jet = cyl(.045, .07, .28, [i * .13, 1.02, -.47], M.amber, xrayReject);
-
     jet.rotation.x = Math.PI / 2;
-
 }
-
 box(1.5, .08, 1.4, [0, .78, .9], M.steel, xrayReject);
-
 box(1.5, .58, 1.25, [0, .3, 1.85], M.blue, xrayReject);
-
 const xrayBlast = mesh(new THREE.ConeGeometry(.48, 1.25, 16, 1, true),
-
     new THREE.MeshBasicMaterial({color: 0x79d8ff, transparent: true, opacity: 0, side: THREE.DoubleSide}),
-
     [0, 1.03, -.05], xrayReject);
-
 xrayBlast.rotation.x = Math.PI / 2;
-
 let xrayBlastFlash = 0;
-
 let orientationBlastFlash = 0;
-
-
-
 // Inspection system is on the upper conveyor BEFORE entry to Step 3 ionized-air cleaning.
 // Cans travel right-to-left here: camera (-6.3), reject (-8.4), cleaner entrance (about -10).
-
 const INSPECT_POS=new THREE.Vector3(-6.3,.92,12),REJECT_POS=new THREE.Vector3(-8.4,.92,12);
-
 const vision=new THREE.Group();
-
 vision.position.set(INSPECT_POS.x,0,INSPECT_POS.z);
-
 vision.userData.stationId=3;
-
 equipment.add(vision);
-
 box(.17,3,.18,[0,1.5,-1.1],M.steel,vision);
-
 box(.14,.14,1.25,[0,2.7,-.5],M.steel,vision);
-
 const camAssembly=new THREE.Group();
-
 camAssembly.position.y=2.6;
-
 vision.add(camAssembly);
-
 box(.55,.65,.55,[0,0,0],M.dark,camAssembly);
-
 box(.57,.14,.57,[0,.2,0],M.amber,camAssembly);
-
 cyl(.19,.19,.36,[0,-.48,0],M.dark,camAssembly);
-
 const ring=mesh(new THREE.TorusGeometry(.42,.07,12,40),new THREE.MeshStandardMaterial( {
-
     color:0xdffaff,emissive:0x38bdf8,emissiveIntensity:.8
-
 }),[0,-.7,0],camAssembly);
-
 ring.rotation.x=Math.PI/2;
-
 for(let s of [-1,1]) {
-
     box(.18,.28,.25,[-1.1,1.45,s*.56],M.dark,vision)
-
 }
-
 const reject=new THREE.Group();
-
 reject.position.set(REJECT_POS.x,0,REJECT_POS.z);
-
 equipment.add(reject);
-
 box(.5,.65,.3,[0,1.2,-.8],M.dark,reject);
-
 for(let i=-1;
-
 i<=1;
-
 i++) {
-
     const no=cyl(.045,.06,.32,[i*.15,1.1,-.53],M.amber,reject);
-
     no.rotation.x=Math.PI/2
-
 }const chute=box(1.4,.09,2,[0,.74,1.55],M.steel,reject);
-
 chute.rotation.x=-.18;
-
 box(1.8,.65,1.4,[0,.35,3.0],M.blue,reject);
-
 let blast=mesh(new THREE.ConeGeometry(.5,1.45,20,1,true),new THREE.MeshBasicMaterial( {
-
     color:0x69dcff,transparent:true,opacity:0,side:THREE.DoubleSide
-
 }),[0,1.08,.12],reject);
-
 blast.rotation.x=Math.PI/2;
-
 // Procedural open-top aluminum cans, with necked shoulders and visible flange.
-
 const cans=[];
-
 let running=true,speed=220,inject=false,canSize='12',inspected=0,good=0,rejected=0,showLabels=true,wire=false,inspectionFlash=0,blastFlash=0,lastDefect='GOOD',lastStatus='WAITING';
-
 const canH= {
-
     12:.43,16:.55,19:.64
-
 };
-
 function makeCan(defective) {
-
     const g=new THREE.Group(),h=canH[canSize],r=.145;
-
     const mat=new THREE.MeshStandardMaterial( {
-
         color:0xd2dbe3,metalness:.92,roughness:.24,side:THREE.DoubleSide
-
     });
-
     const body=mesh(new THREE.CylinderGeometry(r,r,h-.1,24,1,true),mat,[0,(h-.1)/2+.035,0],g);
-
     cyl(r*.87,r,.045,[0,.035,0],mat,g);
-
     const shoulder=cyl(r*.83,r,.075,[0,h-.062,0],mat,g);
-
     const lip=mesh(new THREE.TorusGeometry(r*.83,.012,8,32),defective?M.red:M.bright,[0,h-.022,0],g);
-
     lip.rotation.x=Math.PI/2;
-
     const interior=cyl(r*.75,r*.75,.025,[0,h-.045,0],M.dark,g);
-
     if(defective) {
-
         const dent=mesh(new THREE.SphereGeometry(.07,12,8),M.red,[r*.88,h*.52,0],g);
-
         dent.scale.set(.25,.7,.8)
-
     }
-
     g.userData= {
-
         defective,inspected:false,rejected:false,progress:0,fall:0, orientationBad:Math.random()<.13, rinseExitBad:Math.random()<.24, exitedRinse:false, fillBad:Math.random()<.06
-
     };
-
     if (g.userData.orientationBad) {
-
         // Tip can onto its side, leaving its center above the conveyor.
-
         for (const part of g.children) {
-
             part.position.y -= h/2;
-
         }
-
         const contents = new THREE.Group();
-
         while (g.children.length) contents.add(g.children[0]);
-
         contents.rotation.z = Math.PI/2;
-
         contents.position.y = .16;
-
         g.add(contents);
-
     }
-
     scene.add(g);
-
     return g
-
 }
-
 function spawn() {
-
     const c=makeCan(inject||Math.random()<.12);
-
     inject=false;
-
     c.userData.progress=combinerExitT;
-
     const p=pathAt(combinerExitT);
-
     c.position.copy(p);
-
     cans.push(c)
-
 }
-
 // Map station locations onto route for camera focus and chronological inspection.
-
 const stT=stationDefs.map(d=> {
-
     let best=0,dist=Infinity;
-
     for(let i=0;
-
     i<=N;
-
     i++) {
-
         let p=pathAt(i/N);
-
         const v=(p.x-d[3])**2+(p.z-d[4])**2;
-
         if(v<dist) {
-
             dist=v;
-
             best=i/N
-
         }
-
     }
-
     return best
-
 });
-
 const inspT=(()=> {
-
     let best=0,dist=Infinity;
-
     for(let i=0;
-
     i<=N;
-
     i++) {
-
         const p=pathAt(i/N);
-
         let v=(p.x-INSPECT_POS.x)**2+(p.z-INSPECT_POS.z)**2;
-
         if(v<dist) {
-
             dist=v;
-
             best=i/N
-
         }
-
     }
-
     return best
-
 })();
-
 const rejectT=(()=> {
-
     let best=0,dist=Infinity;
-
     for(let i=0;
-
     i<=N;
-
     i++) {
-
         const p=pathAt(i/N);
-
         let v=(p.x-REJECT_POS.x)**2+(p.z-REJECT_POS.z)**2;
-
         if(v<dist) {
-
             dist=v;
-
             best=i/N
-
         }
-
     }
-
     return best
-
 })();
-
 function nearestProgress(pos) {
-
     let best = 0, distance = Infinity;
-
     for (let i = 0; i <= 950; i++) {
-
         const p = pathAt(i / 950);
-
         const d = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2;
-
         if (d < distance) { distance = d; best = i / 950; }
-
     }
-
     return best;
-
 }
-
 const combinerExitT = nearestProgress(new THREE.Vector3(7.1, .92, 12));
 // Step 3 ionized-air rinse machine is centered at x=-12 on the upper conveyor.
 // Cans move right-to-left, so the exit is at approximately x=-14.4.
 const rinseExitT = nearestProgress(new THREE.Vector3(-14.4, .92, 12));
 const orientationT = nearestProgress(new THREE.Vector3(-26, .92, 6.5));
-
 // Trigger at the actual air nozzle (station 4 at -26, 6.5; nozzle offset +.58, -.72),
 // not at the old downstream point after the conveyor has already turned.
 const orientationRejectT = nearestProgress(new THREE.Vector3(-25.42, .92, 5.78));
-
 const packagingStartT = nearestProgress(new THREE.Vector3(12.8,.92,-15));
 const xrayT = nearestProgress(new THREE.Vector3(-13, .92, -6));
-
 const xrayRejectT = nearestProgress(XRAY_REJECT_POS);
 downstreamMassStartT=nearestProgress(new THREE.Vector3(-17,.92,-15));
 overflowEntryT=nearestProgress(new THREE.Vector3(3,.92,-15));
 packagingMergeT=nearestProgress(new THREE.Vector3(7,.92,-15));
-
-
-
-
 function inspect(c) {
-
     c.userData.inspected=true;
-
     inspected++;
-
     if(c.userData.defective || c.userData.orientationBad) {
-
         rejected++;
-
         lastStatus='REJECT';
-
         lastDefect=c.userData.orientationBad?'WRONG ORIENTATION AT CAMERA':'DENTED FLANGE / BODY';
-
     }else {
-
         good++;
-
         lastStatus='PASS';
-
         lastDefect='FLANGE & SIDEWALL OK'
-
     }
-
     inspectionFlash=.23;
-
     document.querySelector('#total').textContent=inspected;
-
     document.querySelector('#good').textContent=good;
-
     document.querySelector('#reject').textContent=rejected;
-
     const s=document.querySelector('#status');
-
     s.textContent=lastStatus+' — '+lastDefect;
-
     s.className=lastStatus==='REJECT'?'bad':'';
-
     document.querySelector('#detail').textContent='Simulated result; not an actual camera image or machine-vision measurement.'
-
 }
-
 function update(dt) {
-
     if(!running)return;
-
     updateInfeed(dt);
     updateMovingPacks(dt);
-
     for(let i=cans.length-1;
-
     i>=0;
-
     i--) {
-
         const c=cans[i],u=c.userData;
-
         if(u.rejected) {
-
             u.fall+=dt;
-
             if(u.rejectType==='orientation') {
                 // The blue bin is after the turn, at station 4 + (2,-3.3).
                 // Move diagonally OUTWARD toward its center instead of into the curve.
@@ -2012,17 +1146,11 @@ function update(dt) {
                 c.position.z+=dt*4;
                 c.position.y-=dt*2.6;
             }
-
             c.rotation.x+=dt*5;
-
             if(u.fall>1) {
-
                 scene.remove(c);
-
                 cans.splice(i,1)
-
             }continue
-
         }
         // Overflow cans leave the main conveyor at the accumulation diverter.
         // They circulate around the visible loop and wait for a safe opening
@@ -2047,11 +1175,9 @@ function update(dt) {
             }
         }
         const prev=u.progress;
-
         // Match conveyor travel to the 220 CPM feed so consecutive cans
         // remain closely spaced, with only a small visible gap.
         u.progress+=dt*(speed/220)*.006;
-
         // The second orientation fault happens at the physical EXIT of the
         // ionized-air rinse/inverting machine, never at an arbitrary position.
         // The can is upright inside the machine and emerges on its side.
@@ -2091,35 +1217,20 @@ function update(dt) {
             continue;
         }
         if (prev < xrayT && u.progress >= xrayT) {
-
             u.xrayFailed = u.fillBad;
-
         }
-
         if (prev < xrayRejectT && u.progress >= xrayRejectT && u.xrayFailed) {
-
             u.rejected = true;
-
             xrayBlastFlash = .22;
-
             document.querySelector('#notice').textContent = 'X-ray: filled can failed fill/lid check and was pneumatically rejected.';
-
             continue;
-
         }
-
         if(prev<inspT&&u.progress>=inspT)inspect(c);
-
         if(prev<rejectT&&u.progress>=rejectT&&(u.defective || u.orientationBad)) {
-
             u.rejected=true;
-
             blastFlash=.19;
-
             continue
-
         }
-
         // At the end of the wide mass-flow section, the primary stream
         // enters the packaging single-file guide. Cans that cannot enter
         // are diverted into the accumulation circuit instead.
@@ -2142,15 +1253,10 @@ function update(dt) {
             scene.remove(c);cans.splice(i,1);continue;
         }
         if(u.progress>=1) {
-
             scene.remove(c);
-
             cans.splice(i,1);
-
             continue
-
         }const p=pathAt(u.progress);
-
         c.position.set(p.x,p.y,p.z);
         // Visible mass flow: cans fan into several lanes only after X-ray
         // rejection, then smoothly converge into single file for packaging.
@@ -2160,424 +1266,214 @@ function update(dt) {
             if(u.massLane===undefined)u.massLane=(Math.floor(Math.random()*7)-3)*.39;
             c.position.z+=u.massLane*spread;
         }
-
         // Avoid a second single-file stream over the wide infeed.
-
         c.visible = true
-
     }
-
     inspectionFlash=Math.max(0,inspectionFlash-dt);
-
     blastFlash=Math.max(0,blastFlash-dt);
-
     ring.material.emissiveIntensity=inspectionFlash>0?4:.8;
-
     blast.material.opacity=blastFlash>0?.45:0;
-
     xrayBlastFlash = Math.max(0, xrayBlastFlash - dt);
-
     orientationBlastFlash = Math.max(0, orientationBlastFlash - dt);
-
     xrayBlast.material.opacity = xrayBlastFlash > 0 ? .5 : 0;
     for(const obj of stationObjects[4].children){ if(obj.isMesh && obj.material===M.red) obj.scale.setScalar(orientationBlastFlash>0?1.5:1); }
-
 }
-
 const stationList=document.querySelector('#stations');
-
 stationDefs.forEach((d,i)=> {
-
     const b=document.createElement('button');
-
     b.className='station';
-
     b.innerHTML=`<span class="number">${d[0]}</span><span>${d[1]}</span>`;
-
     b.onclick=()=>focusStation(i+1);
-
     stationList.append(b);
-
     if (i === 9) {
-
         const x = document.createElement('button');
-
         x.className = 'station';
-
         x.innerHTML = '<span class="number" style="background:#bb5c06">↗</span><span>Filled-can pneumatic reject <small>(after X-ray)</small></span>';
-
         x.onclick = () => { focusAt(XRAY_REJECT_POS, 5); document.querySelector('#spec-title').textContent = 'POST-X-RAY PNEUMATIC REJECT'; document.querySelector('#spec').textContent = 'The X-ray inspects filled and seamed cans. A downstream air jet pushes cans with incorrect fill level or missing lids into a separate reject bin.'; };
-
         stationList.append(x);
-
     }
-
     if(i===1) {
-
         const q=document.createElement('button');
-
         q.className='station';
-
         q.innerHTML='<span class="number" style="background:#bb5c06">★</span><span>KEYENCE empty-can inspection <small>(before ionized-air rinse)</small></span>';
-
         q.onclick=()=>focusInspection();
-
         stationList.append(q)
-
     }
-
 });
-
 let targetPos=new THREE.Vector3(0,0,0),targetCamera=new THREE.Vector3(18,40,50);
-
 function focusAt(p,dist=9) {
-
     targetPos.set(p.x,1.4,p.z);
-
     targetCamera.set(p.x+dist*.8,dist*.75,p.z+dist);
-
 }
-
 function focusStation(id) {
-
     const d=stationDefs[id-1];
-
     focusAt(new THREE.Vector3(d[3],0,d[4]),7);
-
     document.querySelector('#spec-title').textContent=`STEP ${id}: ${d[1].toUpperCase()}`;
-
     document.querySelector('#spec').textContent=d[2];
-
     document.querySelectorAll('.station').forEach(b=>b.classList.toggle('selected',b.textContent.includes(d[1])))
-
 }
-
 function focusInspection() {
-
     focusAt(INSPECT_POS,5);
-
     document.querySelector('#spec-title').textContent='KEYENCE — BEFORE IONIZED-AIR RINSE';
-
     document.querySelector('#spec').textContent='Empty cans pass beneath the KEYENCE camera and LED ring light on the upper conveyor, before entering Step 3 ionized-air cleaning and printing. The camera checks flange/rim, body defects and incoming orientation. Its dedicated downstream air jet removes failed cans before they enter the cleaner. Step 4 orientation sensing and its separate rejector remain farther downstream, after the ionized-air rinse exit. Camera height changes with selected can size.'
-
 }
-
 function overview() {
-
     targetPos.set(0,1,0);
-
     targetCamera.set(15,42,54)
-
 }
-
 document.querySelector('#pause').onclick=()=> {
-
     running=!running;
-
     document.querySelector('#pause').textContent=running?'⏸ Pause':'▶ Resume'
-
 };
-
 document.querySelector('#overview').onclick=overview;
-
 document.querySelector('#focus').onclick=focusInspection;
-
 document.querySelector('#inject').onclick=()=> {
-
     inject=true;
-
     document.querySelector('#notice').textContent='Defective can queued for the next spawn.'
-
 };
-
 document.querySelector('#speed').oninput=e=> {
-
     speed=+e.target.value;
-
     document.querySelector('#speedtxt').textContent=speed+' CPM';
-
     document.querySelector('#rate').textContent=speed+' CPM'
-
 };
-
 document.querySelector('#size').onchange=e=> {
-
     canSize=e.target.value;
-
     camAssembly.position.y=2.6+(canH[canSize]-.43);
-
     document.querySelector('#notice').textContent='Camera height adjusted for '+canSize+' oz cans.'
-
 };
-
 document.querySelector('#wire').onclick=()=> {
-
     wire=!wire;
-
     equipment.traverse(o=> {
-
         if(o.isMesh&&o.material&&o.material.wireframe!==undefined)o.material.wireframe=wire
-
     });
-
     document.querySelector('#wire').classList.toggle('active',wire)
-
 };
-
 const labelsGroup=new THREE.Group();
-
 scene.add(labelsGroup);
-
 function makeLabel(text,x,z,blue=false) {
-
     const c=document.createElement('canvas');
-
     c.width=512;
-
     c.height=96;
-
     const cx=c.getContext('2d');
-
     cx.fillStyle=blue?'#174e82':'#12243b';
-
     cx.fillRect(0,0,512,96);
-
     cx.strokeStyle='#7bbaf3';
-
     cx.strokeRect(2,2,508,92);
-
     cx.font='bold 29px Arial';
-
     cx.fillStyle='white';
-
     cx.textAlign='center';
-
     cx.fillText(text,256,59);
-
     const s=new THREE.Sprite(new THREE.SpriteMaterial( {
-
         map:new THREE.CanvasTexture(c),transparent:true,depthTest:false
-
     }));
-
     s.position.set(x,4.4,z);
-
     s.scale.set(4.4,.82,1);
-
     labelsGroup.add(s)
-
 }
-
 stationDefs.forEach(d=>makeLabel(`${d[0]}. ${d[1]}`,d[3],d[4]));
-
 makeLabel('KEYENCE — EMPTY CAN CHECK',INSPECT_POS.x,INSPECT_POS.z,true);
-
 makeLabel('X-RAY AIR REJECT', XRAY_REJECT_POS.x, XRAY_REJECT_POS.z, true);
-
 document.querySelector('#labels').onclick=()=> {
-
     showLabels=!showLabels;
-
     labelsGroup.visible=showLabels
-
 };
-
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();
-
 renderer.domElement.addEventListener('pointerup',e=> {
-
     if(Math.abs(e.movementX)>5||Math.abs(e.movementY)>5)return;
-
     mouse.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);
-
     ray.setFromCamera(mouse,camera);
-
     const hits=ray.intersectObjects(equipment.children,true);
-
     if(hits.length) {
-
         let obj=hits[0].object;
-
         while(obj.parent&&obj.userData.stationId===undefined)obj=obj.parent;
-
         if(obj.userData.stationId)focusStation(obj.userData.stationId)
-
     }
-
 });
-
 const feed=document.querySelector('#feed'),ctx=feed.getContext('2d');
-
 function drawFeed(time) {
-
     const w=feed.width,h=feed.height;
-
     ctx.fillStyle='#07111c';
-
     ctx.fillRect(0,0,w,h);
-
     ctx.strokeStyle='#1c3b53';
-
     for(let x=0;
-
     x<w;
-
     x+=25) {
-
         ctx.beginPath();
-
         ctx.moveTo(x,0);
-
         ctx.lineTo(x,h);
-
         ctx.stroke()
-
     }
-
     for(let y=0;
-
     y<h;
-
     y+=25) {
-
         ctx.beginPath();
-
         ctx.moveTo(0,y);
-
         ctx.lineTo(w,y);
-
         ctx.stroke()
-
     }const bad=lastStatus==='REJECT';
-
     const gradient=ctx.createRadialGradient(200,135,18,200,135,105);
-
     gradient.addColorStop(0,'#27394c');
-
     gradient.addColorStop(.7,'#94a3b8');
-
     gradient.addColorStop(1,'#253447');
-
     ctx.fillStyle=gradient;
-
     ctx.beginPath();
-
     ctx.arc(200,138,92,0,Math.PI*2);
-
     ctx.fill();
-
     ctx.strokeStyle=bad?'#fb7185':'#4ade80';
-
     ctx.lineWidth=5;
-
     ctx.beginPath();
-
     ctx.arc(200,138,91,0,Math.PI*2);
-
     ctx.stroke();
-
     ctx.strokeStyle='#243445';
-
     ctx.lineWidth=20;
-
     ctx.beginPath();
-
     ctx.arc(200,138,57,0,Math.PI*2);
-
     ctx.stroke();
-
     ctx.strokeStyle='#38bdf8';
-
     ctx.lineWidth=1;
-
     ctx.beginPath();
-
     ctx.moveTo(200,15);
-
     ctx.lineTo(200,260);
-
     ctx.moveTo(80,138);
-
     ctx.lineTo(320,138);
-
     ctx.stroke();
-
     if(bad) {
-
         ctx.strokeStyle='#ff335b';
-
         ctx.lineWidth=7;
-
         ctx.beginPath();
-
         ctx.arc(200,138,91,-.6,.08);
-
         ctx.stroke()
-
     }ctx.fillStyle=bad?'#fb7185':'#4ade80';
-
     ctx.font='bold 17px monospace';
-
     ctx.fillText(lastStatus,12,25);
-
     ctx.fillStyle='#9ad5ec';
-
     ctx.font='12px monospace';
-
     ctx.fillText('SIMULATED CAMERA VIEW',12,264);
-
     ctx.fillText('220 CPM DESIGN TARGET',214,264)
-
 }
-
 let spawnClock=0,last=performance.now();
-
 function animate(now) {
-
     requestAnimationFrame(animate);
-
     const dt=Math.min(.05,(now-last)/1000);
-
     last=now;
-
     update(dt * 3.5);
-
     drawFeed(now);
-
     orbit.target.lerp(targetPos,.035);
-
     camera.position.lerp(targetCamera,.025);
-
     orbit.update();
-
     renderer.render(scene,camera)
-
 }
-
 overview();
-
 camera.position.copy(targetCamera);
-
 orbit.target.copy(targetPos);
-
 focusInspection();
-
 overview();
-
 requestAnimationFrame(animate);
-
 window.addEventListener('resize',()=> {
-
     camera.aspect=innerWidth/innerHeight;
-
     camera.updateProjectionMatrix();
-
     renderer.setSize(innerWidth,innerHeight)
-
 });
-
   </script>
-
  </body>
-
 </html>
