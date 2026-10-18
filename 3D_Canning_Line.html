@@ -941,15 +941,21 @@ const movingPacks=[];
 const packagingInputCans=[];
 let packagingCanCount=0;
 function makePackagingInputCan(kind){
- const g=new THREE.Group();endLine.add(g);
+ const g=new THREE.Group();
+ // Initialize at the actual diverter, not the scene origin.
+ g.position.set(12.9,BELT_TOP,-15);
  cyl(.145,.145,.46,[0,.24,0],M.bright,g,20);
  cyl(.13,.13,.018,[0,.48,0],M.dark,g,20);
+ endLine.add(g);
  packagingInputCans.push({object:g,kind,progress:0});
 }
 function makeMovingPack(kind){
- const g=new THREE.Group();endLine.add(g);
+ const g=new THREE.Group();
  if(kind==='carton')makeCarton(g);else makeSixPack(g);
- // Begin at the EXIT of the packaging machine, not its entrance.
+ // Initialize the pack at its machine outfeed, hidden until loader exit.
+ g.position.set(17.1,BELT_TOP,kind==='carton'?-18.2:-11.8);
+ g.visible=false;
+ endLine.add(g);
  movingPacks.push({object:g,kind,progress:4.9,trayAdded:false});
 }
 function updateMovingPacks(dt){
