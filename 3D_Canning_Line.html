@@ -369,7 +369,7 @@ window.addEventListener('unhandledrejection',function(e){
    </div>
   </aside>
   <footer class="panel">
-   Drag to rotate · Scroll to zoom · Right-drag to pan · Click any station · Camera and reject occur before Step 3 ionized-air rinse / cleaning
+   Drag to rotate · Scroll/Q/E to zoom · Right-drag/WASD to pan · Arrow keys to orbit · Click any station · Camera and reject occur before Step 3 ionized-air rinse / cleaning
   </footer>
   <script type="module">
    import * as THREE from 'three';
@@ -394,6 +394,16 @@ renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.6;
 document.querySelector('#stage').appendChild(renderer.domElement);
 const orbit=new OrbitControls(camera,renderer.domElement);
+orbit.enablePan=true; orbit.enableRotate=true; orbit.screenSpacePanning=true;
+let cameraTween=false;
+const keysDown=new Set();
+renderer.domElement.tabIndex=0;
+renderer.domElement.style.outline="none";
+renderer.domElement.addEventListener("pointerdown",()=>{cameraTween=false;renderer.domElement.focus();});
+renderer.domElement.addEventListener("wheel",()=>{cameraTween=false;},{passive:true});
+window.addEventListener("keydown",e=>{if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","KeyW","KeyA","KeyS","KeyD","KeyQ","KeyE"].includes(e.code) && !["INPUT","SELECT","TEXTAREA"].includes(document.activeElement.tagName)){keysDown.add(e.code);e.preventDefault();cameraTween=false;}});
+window.addEventListener("keyup",e=>keysDown.delete(e.code));
+window.addEventListener("blur",()=>keysDown.clear());
 orbit.enableDamping=true;
 orbit.target.set(0,1,0);
 orbit.maxPolarAngle=Math.PI/2-.05;
@@ -464,9 +474,21 @@ grid.position.y=.005;
 scene.add(grid);
 // The winding single-file route mirrors the reference: upper run (right to left), left U-turn,
 // lower run (left to right), accumulation loop, then packaging run to the far right.
-const routePts=[[22,12],[-25,12],[-27,10],[-27,7],[-25,5],[21,5],[24,3],[24,-3],[21,-6],[-20,-6],[-22,-8],[-22,-11],[-17,-15],[3,-15],[7,-15],[13,-15]];
-// Move cans from depalletizer on upper-right to left; subsequent lower line and packaging.
-const pts=[...routePts].map(([x,z])=>new THREE.Vector3(x,.92,z));
+// The depalletizer and combiner sit on an elevated section, then the cans descend
+// down to the main production elevation before the rinse / filler area.
+const BASE_LINE_Y=.92;
+const ELEVATED_LINE_Y=3.12;
+const ELEVATION_OFFSET=ELEVATED_LINE_Y-BASE_LINE_Y;
+const routePts=[
+    [22,ELEVATED_LINE_Y,12],[16,ELEVATED_LINE_Y,12],[10.5,ELEVATED_LINE_Y,12],[7.2,ELEVATED_LINE_Y,12],
+    [4.5,2.75,12],[1.5,2.15,12],[-2,1.55,12],[-6,1.08,12],[-9.5,BASE_LINE_Y,12],[-25,BASE_LINE_Y,12],
+    [-27,BASE_LINE_Y,10],[-27,BASE_LINE_Y,7],[-25,BASE_LINE_Y,5],[21,BASE_LINE_Y,5],[24,BASE_LINE_Y,3],
+    [24,BASE_LINE_Y,-3],[21,BASE_LINE_Y,-6],[-20,BASE_LINE_Y,-6],[-22,BASE_LINE_Y,-8],[-22,BASE_LINE_Y,-11],
+    [-17,BASE_LINE_Y,-15],[3,BASE_LINE_Y,-15],[7,BASE_LINE_Y,-15],[13,BASE_LINE_Y,-15]
+];
+// Move cans from the elevated depalletizer on the upper-right, down the decline,
+// and then through the lower production line and packaging area.
+const pts=[...routePts].map(([x,y,z])=>new THREE.Vector3(x,y,z));
 const path=new THREE.CatmullRomCurve3(pts,false,'catmullrom',.12);
 const N=260;
 const lengths=path.getLengths(N);
@@ -511,10 +533,11 @@ for(let i=0;
 i<N;
 i+=32) {
     const p=pathAt(i/N);
+    const legH=Math.max(.86,p.y-.05);
     for(const dz of [-.34,.34]) {
-        cyl(.052,.07,.86,[p.x,.43,p.z+dz],M.steel,conveyor,10)
+        cyl(.052,.07,legH,[p.x,legH/2,p.z+dz],M.steel,conveyor,10)
     }
-    box(1.1,.15,.95,[p.x,.79,p.z],M.steel,conveyor)
+    box(1.1,.15,.95,[p.x,p.y-.13,p.z],M.steel,conveyor)
 }
 // After the X-ray pneumatic rejector, the surviving filled cans spread onto
 // a wide mass-flow conveyor, then funnel back into single file for packaging.
@@ -576,9 +599,11 @@ scene.add(massInfeed);
 for (let i = 0; i < 46; i++) {
     const x = 23.5 - i * 0.36;
     const width = 3.8 - 2.9 * (i / 45);
-    box(.38, .11, width, [x, .92, 12], M.belt, massInfeed);
+    box(.38, .11, width, [x, ELEVATED_LINE_Y, 12], M.belt, massInfeed);
     if (i % 5 === 0) {
-        box(.07, .16, width + .12, [x, .84, 12], M.steel, massInfeed);
+        const legH=ELEVATED_LINE_Y-.05;
+        box(.07, legH, width + .12, [x, legH/2, 12], M.steel, massInfeed);
+        box(.18, .10, width + .16, [x, ELEVATED_LINE_Y-.12, 12], M.steel, massInfeed);
     }
 }
 for (const side of [-1, 1]) {
@@ -586,7 +611,7 @@ for (const side of [-1, 1]) {
     for (let i = 0; i <= 46; i++) {
         const x = 23.5 - i * .36;
         const z = 12 + side * (1.9 - 1.45 * i / 46);
-        const current = [x, 1.18, z];
+        const current = [x, ELEVATED_LINE_Y + .26, z];
         if (previous) tube(previous, current, .04, M.bright, massInfeed);
         previous = current;
     }
@@ -623,7 +648,7 @@ function updateInfeed(dt) {
         item.x = Math.max(COMBINER_EXIT_X, proposedX);
         const progress = THREE.MathUtils.clamp((23.1 - item.x) / 16, 0, 1);
         const converge = progress * progress * (3 - 2 * progress);
-        item.object.position.set(item.x, .92, 12 + item.lane * .34 * (1 - converge));
+        item.object.position.set(item.x, ELEVATED_LINE_Y, 12 + item.lane * .34 * (1 - converge));
         if (item.x <= COMBINER_EXIT_X + .001 && nextHandoffTime <= 0) {
             // This very same arrival triggers its single-file replacement.
             spawn();
@@ -633,7 +658,7 @@ function updateInfeed(dt) {
         }
     }
 }
-const stationDefs=[ [1,'Empty can depalletizing','Pallets of empty aluminum cans are unloaded and fed onto the mass conveyor.',22,12], [2,'Manual inspection / mass-flow combiner','Manual inspection area and narrowing combiner guides: cans arrive in a wide mass flow and become single-file. No operator is depicted.',7,12], [3,'Invert, clean & print','Cans invert for ionized-air/vacuum cleaning and receive bottom date/lot coding.',-12,12], [4,'Orientation check','Upper/lower sensors and pneumatic nozzle on the inside of the conveyor eject sideways cans into a blue reject bin just after the U-turn on the outside of the lower conveyor.',-26,6.5], [5,'CO₂ flushing & filling','Rotary filler purges oxygen with CO₂ and fills each can.',-16,5], [6,'Seaming','Lids are applied and mechanically seamed onto filled cans.',-9,5], [7,'Rinse / foam removal','External rinse removes product residue and foam.',-1,5], [8,'Condensation removal','Air knives remove exterior moisture before downstream inspection.',8,5], [9,'Optional labeling','Labels or sleeves may be applied where needed.',16,5], [10,'X-ray fill/lid inspection','Downstream quality check verifies fill level and lid presence.',-13,-6], [11,'Accumulation control','After X-ray rejection, cans spread into mass flow; packaging accepts single-file cans and diverts overflow through a circulating accumulation loop.',3,-11], [12,'Selectable packaging','One packaging mode at a time: six-packs with black caps use one branch and carton boxes use the other; both feed the tray loader.',15,-13], [13,'Carton tray loading','The selected packaged product enters the tray loader; it exits seated inside a cardboard shipping tray.',19.5,-15], [14,'Manual palletization','Finished multipacks and cartons are collected in shipping trays and stacked on a wooden pallet.',31.5,-15]];
+const stationDefs=[ [1,'Empty can depalletizing','Empty cans are depalletized on an elevated infeed level before moving toward the combiner.',22,12], [2,'Manual inspection / mass-flow combiner','At the elevated combiner, cans arrive in a wide mass flow, narrow into a single-file lane, and then descend toward the main production line.',7,12], [3,'Two-stage invert, rinse & code','After descending from the elevated depalletizer section, Chamber 1 inverts each can for ionized-air/vacuum cleaning, the exposed bottom receives a date/lot code between chambers, and Chamber 2 returns it upright.',-12,12], [4,'Orientation check','Upper/lower sensors and pneumatic nozzle on the inside of the conveyor eject sideways cans into a blue reject bin just after the U-turn on the outside of the lower conveyor.',-26,6.5], [5,'CO₂ flushing & filling','Rotary filler purges oxygen with CO₂ and fills each can.',-16,5], [6,'Seaming','Lids are applied and mechanically seamed onto filled cans.',-9,5], [7,'Rinse / foam removal','External rinse removes product residue and foam.',-1,5], [8,'Condensation inspection & removal','Air knives dry external surfaces; a moisture sensor checks remaining droplets and rejects wet cans.',8,5], [9,'Optional labeling','Labels or sleeves may be applied where needed.',16,5], [10,'X-ray fill/lid inspection','Downstream quality check verifies fill level and lid presence.',-13,-6], [11,'Accumulation control','After X-ray rejection, cans spread into mass flow; packaging accepts single-file cans and diverts overflow through a circulating accumulation loop.',3,-11], [12,'Selectable packaging','One packaging mode at a time: six-packs with black caps use one branch and carton boxes use the other; both feed the tray loader.',15,-13], [13,'Carton tray loading','The selected packaged product enters the tray loader; it exits seated inside a cardboard shipping tray.',19.5,-15], [14,'Manual palletization','Finished multipacks and cartons are collected in shipping trays and stacked on a wooden pallet.',31.5,-15]];
 const stationObjects=[];
 const equipment=new THREE.Group();
 scene.add(equipment);
@@ -676,7 +701,10 @@ function pallets(g,filled=true) {
 }
 {
     let g=machineGroup(1);
+    g.position.y=ELEVATION_OFFSET;
     housing(g,2.8,2.9,2.6,true);
+    const supportH=ELEVATION_OFFSET+.86;
+    for(const x of [-1.15,1.15])for(const z of [-1.05,1.05])box(.14,supportH,.14,[x,.43-ELEVATION_OFFSET/2,z],M.steel,g);
     const pg=new THREE.Group();
     pg.position.set(2.5,0,0);
     g.add(pg);
@@ -685,16 +713,53 @@ function pallets(g,filled=true) {
 }
 {
     let g=machineGroup(2);
+    g.position.y=ELEVATION_OFFSET;
+    const supportH=ELEVATION_OFFSET+.52;
+    for(const x of [-1.7,1.7])for(const z of [-.72,.72])box(.12,supportH,.12,[x,.26-ELEVATION_OFFSET/2,z],M.steel,g);
+    box(4.2,.12,1.55,[0,.88,0],M.steel,g);
     for(let s of [-1,1])tube([-2,1.2,s*.95],[2,1.2,s*.43],.055,M.bright,g);
 }
 {
+    // Two real, distinct inverter chambers: cans travel RIGHT to LEFT.
+    // First enclosed chamber tips cans, uses ionized air/vacuum, then a coding
+    // head prints the exposed bottom between chambers; second tips them upright.
     let g=machineGroup(3);
-    housing(g,4,2,2.2,true);
-    for(let x of [-1.15,0,1.15]) {
-        cyl(.35,.35,.18,[x,2.48,0],M.dark,g);
-        for(let s of [-1,1])tube([x+s*.24,2.45,0],[x+s*.24,1.25,0],.03,M.steel,g)
+    const enclosureMat=new THREE.MeshStandardMaterial({color:0x171d25,metalness:.32,roughness:.56});
+    const windowMat=new THREE.MeshPhysicalMaterial({color:0x9edbff,transparent:true,opacity:.18,roughness:.15,depthWrite:false,side:THREE.DoubleSide});
+    for(const [x,caption] of [[1.35,'INVERT + IONIZED AIR'],[-1.35,'RETURN UPRIGHT']]) {
+        const c=new THREE.Group();c.position.x=x;g.add(c);
+        box(1.78,.13,2.12,[0,1.03,0],M.steel,c);
+        box(1.78,.17,2.12,[0,2.76,0],enclosureMat,c);
+        for(const sx of [-.83,.83])for(const sz of [-.96,.96])box(.09,1.63,.09,[sx,1.91,sz],M.steel,c);
+        box(1.64,1.40,.055,[0,1.89,-1.03],enclosureMat,c);
+        box(1.58,1.35,.034,[0,1.89,1.04],windowMat,c);
+        box(.04,1.35,1.86,[-.89,1.89,0],windowMat,c);
+        box(.04,1.35,1.86,[.89,1.89,0],windowMat,c);
+        // Curved guides surrounding the visible can inverter.
+        for(const sz of [-.32,.32]){
+           const arc=mesh(new THREE.TorusGeometry(.48,.047,8,36,Math.PI),M.bright,[0,1.56,sz],c);
+           arc.rotation.z=Math.PI/2;
+        }
+        for(const sz of [-.28,.28])tube([-.69,1.25,sz],[.69,1.25,sz],.045,M.bright,c);
+        if(x>0){
+           const manifold=box(.62,.23,.63,[0,2.49,0],M.dark,c);
+           for(let j=-1;j<=1;j++){
+             const n=cyl(.045,.025,.26,[j*.19,2.27,0],M.blue,c,10);
+             n.rotation.x=Math.PI/2;
+           }
+           tube([0,2.64,-.22],[0,3.05,-.34],.075,M.dark,c);
+        }
     }
-    box(.45,.42,.6,[1.65,1.6,-.7],M.dark,g)
+    // The code printer is accessible and visible BETWEEN the two chambers.
+    const coder=new THREE.Group();g.add(coder);
+    box(.18,1.15,.18,[0,1.68,-.88],M.steel,coder);
+    box(.78,.55,.66,[0,2.06,-.68],enclosureMat,coder);
+    const printHead=box(.26,.22,.3,[0,1.54,-.25],M.dark,coder);
+    box(.19,.055,.18,[0,1.41,-.16],M.amber,coder);
+    tube([0,2.25,-.68],[.39,2.65,-.85],.052,M.dark,coder);
+    const orangeCable=new THREE.MeshStandardMaterial({color:0xe87922,roughness:.5});
+    tube([.39,2.65,-.85],[.8,2.84,-.85],.025,orangeCable,coder);
+    box(.45,.3,.09,[0,2.12,-.27],M.blue,coder);
 }
 {
     let g=machineGroup(4);
@@ -991,43 +1056,122 @@ let blast=mesh(new THREE.ConeGeometry(.5,1.45,20,1,true),new THREE.MeshBasicMate
 }),[0,1.08,.12],reject);
 blast.rotation.x=Math.PI/2;
 // Procedural open-top aluminum cans, with necked shoulders and visible flange.
+// Stage effects: dynamic, visibly animated process indicators. They are illustrative,
+// not representations of radiation escaping an actual enclosed X-ray machine.
+const effects=new THREE.Group();scene.add(effects);
+const sprayGeo=new THREE.SphereGeometry(.025,6,5);
+const effectMats={water:new THREE.MeshBasicMaterial({color:0x63d6ff,transparent:true,opacity:.84,depthWrite:false}),
+ air:new THREE.MeshBasicMaterial({color:0xa9f3ff,transparent:true,opacity:.67,depthWrite:false}),
+ beer:new THREE.MeshBasicMaterial({color:0xe7a523,transparent:true,opacity:.9}),
+ vapor:new THREE.MeshBasicMaterial({color:0xbbeaff,transparent:true,opacity:.35,depthWrite:false})};
+const particles=[];
+function particle(x,y,z,kind,velocity,life=.7){
+ const o=new THREE.Mesh(sprayGeo,effectMats[kind]);o.position.set(x,y,z);effects.add(o);
+ particles.push({o,v:new THREE.Vector3(...velocity),life,max:life});
+}
+function pulseParticles(dt){
+ const emissions=[[-10.65,12,'air',1.70],[-1,5,'water',2.35],[-16,5,'beer',2.7],[8,5,'air',2.35]];
+ // Fixed particle budget avoids slowdown during long demonstrations.
+ for(const [x,z,kind,y] of emissions){
+  const rate=kind==='beer'?34:kind==='water'?65:44;
+  const num=Math.min(8,Math.floor(rate*dt+Math.random()));
+  for(let i=0;i<num;i++){
+   const dx=(Math.random()-.5)*1.65,dz=(Math.random()-.5)*.55;
+   particle(x+dx,y,z+dz,kind,[(Math.random()-.5)*.65,kind==='air'?-2.4:-3.2,(Math.random()-.5)*.8],.37+Math.random()*.36);
+  }
+ }
+ for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.life-=dt;
+  if(p.life<=0){effects.remove(p.o);particles.splice(i,1);continue;}
+  p.o.position.addScaledVector(p.v,dt);p.o.material.opacity;const f=p.life/p.max;p.o.scale.setScalar(Math.max(.22,f));
+ }
+}
+// Mechanisms mounted at the existing machinery coordinates.
+const animatedMechanisms=[];
+for(const [id,x,z] of [[3,-10.65,12],[5,-16,5],[6,-9,5],[7,-1,5],[8,8,5]]){
+ const group=new THREE.Group();group.position.set(x,0,z);effects.add(group);
+ if(id===5){const jets=[];for(let j=-1;j<=1;j++){const a=cyl(.048,.06,.85,[j*.48,1.85,0],effectMats.beer,group,9);jets.push(a);}animatedMechanisms.push({id,jets});}
+ if(id===6){const head=cyl(.42,.42,.22,[0,1.95,0],M.dark,group,24);const press=cyl(.25,.25,.14,[0,1.73,0],M.bright,group,24);animatedMechanisms.push({id,head,press});}
+ if(id===3||id===7||id===8){const jets=[];for(let j=-2;j<=2;j++){
+ const beam=cyl(.012,.035,.78,[j*.32,1.86,0],id===7?effectMats.water:effectMats.air,group,8);beam.material=beam.material.clone();beam.material.transparent=true;beam.material.opacity=.5;jets.push(beam);
+ }animatedMechanisms.push({id,jets});}
+}
+const scanGroup=new THREE.Group();scanGroup.position.set(-13,0,-6);effects.add(scanGroup);
+const scanMat=new THREE.MeshBasicMaterial({color:0x5be1ff,transparent:true,opacity:.18,depthWrite:false,side:THREE.DoubleSide});
+const scanPlane=new THREE.Mesh(new THREE.PlaneGeometry(1.45,1.55),scanMat);scanPlane.position.set(0,1.65,0);scanGroup.add(scanPlane);
+const scanLine=box(1.55,.055,.025,[0,1.75,0],new THREE.MeshBasicMaterial({color:0x80f5ff}),scanGroup);
+const scanBeam=mesh(new THREE.CylinderGeometry(.012,.012,1.1,10),new THREE.MeshBasicMaterial({color:0x75eaff,transparent:true,opacity:.7}),[0,1.65,0],scanGroup);
+// Moisture sensor and dedicated downstream reject, before optional labeling.
+const moistureReject=new THREE.Group();moistureReject.position.set(11.3,0,5);equipment.add(moistureReject);
+moistureReject.userData.stationId=8;
+box(.09,1.4,.09,[0,.7,-.72],M.steel,moistureReject);
+box(.42,.28,.4,[0,1.35,-.63],M.blue,moistureReject);
+box(1.25,.53,1.1,[.25,.34,2.1],M.blue,moistureReject);
+const moistureBeam=mesh(new THREE.ConeGeometry(.3,1.2,12,1,true),new THREE.MeshBasicMaterial({color:0x85e8ff,transparent:true,opacity:0,side:THREE.DoubleSide}),[0,1.1,.15],moistureReject);
+moistureBeam.rotation.x=Math.PI/2;
+let moistureFlash=0;
 const cans=[];
 let running=true,speed=220,inject=false,canSize='12',inspected=0,good=0,rejected=0,showLabels=true,wire=false,inspectionFlash=0,blastFlash=0,lastDefect='GOOD',lastStatus='WAITING';
 const canH= {
     12:.43,16:.55,19:.64
 };
 function makeCan(defective) {
-    const g=new THREE.Group(),h=canH[canSize],r=.145;
-    const mat=new THREE.MeshStandardMaterial( {
-        color:0xd2dbe3,metalness:.92,roughness:.24,side:THREE.DoubleSide
-    });
-    const body=mesh(new THREE.CylinderGeometry(r,r,h-.1,24,1,true),mat,[0,(h-.1)/2+.035,0],g);
-    cyl(r*.87,r,.045,[0,.035,0],mat,g);
-    const shoulder=cyl(r*.83,r,.075,[0,h-.062,0],mat,g);
-    const lip=mesh(new THREE.TorusGeometry(r*.83,.012,8,32),defective?M.red:M.bright,[0,h-.022,0],g);
-    lip.rotation.x=Math.PI/2;
-    const interior=cyl(r*.75,r*.75,.025,[0,h-.045,0],M.dark,g);
-    if(defective) {
-        const dent=mesh(new THREE.SphereGeometry(.07,12,8),M.red,[r*.88,h*.52,0],g);
-        dent.scale.set(.25,.7,.8)
-    }
-    g.userData= {
-        defective,inspected:false,rejected:false,progress:0,fall:0, orientationBad:Math.random()<.13, rinseExitBad:Math.random()<.24, exitedRinse:false, fillBad:Math.random()<.06
-    };
-    if (g.userData.orientationBad) {
-        // Tip can onto its side, leaving its center above the conveyor.
-        for (const part of g.children) {
-            part.position.y -= h/2;
-        }
-        const contents = new THREE.Group();
-        while (g.children.length) contents.add(g.children[0]);
-        contents.rotation.z = Math.PI/2;
-        contents.position.y = .16;
-        g.add(contents);
-    }
-    scene.add(g);
-    return g
+ const g=new THREE.Group(),h=canH[canSize],r=.145;
+ const defectType=defective?(Math.random()<.5?'rim':'body'):'none';
+ const metal=new THREE.MeshStandardMaterial({color:0xcbd8e2,metalness:.86,roughness:.26,side:THREE.DoubleSide});
+ // Deform cylinder vertices inward to form actual geometric dents rather than red blobs.
+ const geom=new THREE.CylinderGeometry(r,r,h-.1,48,16,true);
+ const pos=geom.attributes.position;
+ for(let i=0;i<pos.count;i++){
+  const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
+  const ang=Math.atan2(z,x);const da=Math.atan2(Math.sin(ang-.6),Math.cos(ang-.6));
+  const heightNorm=(y+(h-.1)/2)/(h-.1);
+  const bodyDent=defectType==='body'?Math.exp(-((da/.36)**2+((heightNorm-.57)/.20)**2)*2)*.067:0;
+  const rimDent=defectType==='rim'?Math.exp(-((da/.29)**2+((heightNorm-.94)/.11)**2)*2)*.059:0;
+  const k=1-(bodyDent+rimDent)/r;
+  pos.setXYZ(i,x*k,y,z*k);
+ }
+ geom.computeVertexNormals();
+ mesh(geom,metal,[0,(h-.1)/2+.035,0],g);
+ cyl(r*.87,r,.045,[0,.035,0],metal,g);
+ cyl(r*.83,r,.075,[0,h-.062,0],metal,g);
+ const rimGeom=new THREE.TorusGeometry(r*.83,.013,8,64);
+ if(defectType==='rim'){
+  const pa=rimGeom.attributes.position;
+  for(let i=0;i<pa.count;i++){
+   const x=pa.getX(i),y=pa.getY(i),a=Math.atan2(y,x),da=Math.atan2(Math.sin(a-.6),Math.cos(a-.6));
+   const q=Math.exp(-Math.pow(da/.30,2));pa.setXYZ(i,x*(1-.38*q),y*(1-.38*q),pa.getZ(i)-.035*q);
+  }rimGeom.computeVertexNormals();
+ }
+ const lip=mesh(rimGeom,metal,[0,h-.022,0],g);lip.rotation.x=Math.PI/2;
+ const inside=cyl(r*.73,r*.73,.018,[0,h-.055,0],M.dark,g);inside.name='interior';
+ // Dot-matrix style lot/date mark on the can's bottom (visible when inverted).
+ const codeMark=new THREE.Group();g.add(codeMark);codeMark.visible=false;
+ for(let row=0;row<3;row++)for(let col=0;col<9;col++){
+   if((row+col*3)%5===0)continue;
+   const dot=box(.009,.003,.009,[(col-4)*.014,.010,(row-1)*.016],M.dark,codeMark);
+ }
+ // Recessed dark interior until the filler; lid remains attached downstream.
+ const beerMat=new THREE.MeshPhysicalMaterial({color:0xc7780b,metalness:.12,roughness:.28,transparent:true,opacity:.94});
+ const beer=cyl(r*.71,r*.71,.014,[0,.06,0],beerMat,g,24);beer.visible=false;
+ const lid=cyl(r*.83,r*.83,.017,[0,h-.018,0],M.bright,g,32);lid.visible=false;
+ const lidRing=mesh(new THREE.TorusGeometry(r*.75,.009,6,32),M.dark,[0,h-.006,0],g);lidRing.rotation.x=Math.PI/2;lidRing.visible=false;
+ const moisture=new THREE.Group();g.add(moisture);
+ const droplets=[];for(let i=0;i<20;i++){
+  const a=i*2.399,y=h*(.18+.68*((i*.618)%1));
+  const bead=mesh(new THREE.SphereGeometry(.011+(i%3)*.003,6,5),effectMats.water,[Math.cos(a)*r,y,Math.sin(a)*r],moisture);droplets.push(bead);
+ }
+ moisture.visible=false;
+ g.userData={defective,defectType,inspected:false,rejected:false,progress:0,fall:0,
+  orientationBad:Math.random()<.07,rinseExitBad:Math.random()<.11,exitedRinse:false,
+  fillBad:Math.random()<.07,moistureBad:Math.random()<.12,filled:false,sealed:false,
+  fillAmount:0,lid,lip,lidRing,beer,inside,moisture,height:h,codeMark};
+ if(g.userData.orientationBad){
+  const contents=new THREE.Group();while(g.children.length){const part=g.children[0];part.position.y-=h/2;contents.add(part);}
+  contents.rotation.z=Math.PI/2;contents.position.y=.16;g.add(contents);
+ }
+ scene.add(g);return g;
 }
+
 function spawn() {
     const c=makeCan(inject||Math.random()<.12);
     inject=false;
@@ -1091,12 +1235,30 @@ function nearestProgress(pos) {
 const combinerExitT = nearestProgress(new THREE.Vector3(7.1, .92, 12));
 // Step 3 ionized-air rinse machine is centered at x=-12 on the upper conveyor.
 // Cans move right-to-left, so the exit is at approximately x=-14.4.
+const rinseInvertStartT = nearestProgress(new THREE.Vector3(-9.82,.92,12));
+const rinseInvertFinishT = nearestProgress(new THREE.Vector3(-10.70,.92,12));
+const rinsePrintT = nearestProgress(new THREE.Vector3(-12.0,.92,12));
+const rinseReturnStartT = nearestProgress(new THREE.Vector3(-13.08,.92,12));
 const rinseExitT = nearestProgress(new THREE.Vector3(-14.4, .92, 12));
+function smoothed(a,b,value){const t=THREE.MathUtils.clamp((value-a)/(b-a),0,1);return t*t*(3-2*t);}
+function canRinseAngle(t){
+ if(t<rinseInvertStartT)return 0;
+ if(t<rinseInvertFinishT)return Math.PI*smoothed(rinseInvertStartT,rinseInvertFinishT,t);
+ if(t<rinseReturnStartT)return Math.PI;
+ if(t<rinseExitT)return Math.PI*(1-smoothed(rinseReturnStartT,rinseExitT,t));
+ return 0;
+}
 const orientationT = nearestProgress(new THREE.Vector3(-26, .92, 6.5));
 // Trigger at the actual air nozzle (station 4 at -26, 6.5; nozzle offset +.58, -.72),
 // not at the old downstream point after the conveyor has already turned.
 const orientationRejectT = nearestProgress(new THREE.Vector3(-25.42, .92, 5.78));
 const packagingStartT = nearestProgress(new THREE.Vector3(12.8,.92,-15));
+const fillStartT=nearestProgress(new THREE.Vector3(-17.6,.92,5));
+const fillEndT=nearestProgress(new THREE.Vector3(-14.4,.92,5));
+const seamT=nearestProgress(new THREE.Vector3(-9,.92,5));
+const rinseT=nearestProgress(new THREE.Vector3(-1,.92,5));
+const dryT=nearestProgress(new THREE.Vector3(8,.92,5));
+const moistureRejectT=nearestProgress(new THREE.Vector3(11.3,.92,5));
 const xrayT = nearestProgress(new THREE.Vector3(-13, .92, -6));
 const xrayRejectT = nearestProgress(XRAY_REJECT_POS);
 downstreamMassStartT=nearestProgress(new THREE.Vector3(-17,.92,-15));
@@ -1108,7 +1270,7 @@ function inspect(c) {
     if(c.userData.defective || c.userData.orientationBad) {
         rejected++;
         lastStatus='REJECT';
-        lastDefect=c.userData.orientationBad?'WRONG ORIENTATION AT CAMERA':'DENTED FLANGE / BODY';
+        lastDefect=c.userData.orientationBad?'WRONG ORIENTATION AT CAMERA':(c.userData.defectType==='rim'?'DENTED TOP RIM / FLANGE':'DENTED CAN BODY');
     }else {
         good++;
         lastStatus='PASS';
@@ -1121,19 +1283,31 @@ function inspect(c) {
     const s=document.querySelector('#status');
     s.textContent=lastStatus+' — '+lastDefect;
     s.className=lastStatus==='REJECT'?'bad':'';
-    document.querySelector('#detail').textContent='Simulated result; not an actual camera image or machine-vision measurement.'
+    document.querySelector('#detail').textContent='Simulated detection: '+lastDefect+'. This is not a real KEYENCE image or measurement.'
 }
 function update(dt) {
     if(!running)return;
     updateInfeed(dt);
     updateMovingPacks(dt);
+    pulseParticles(dt);
+    const elapsed=performance.now()*.001;
+    for(const m of animatedMechanisms){
+      if(m.id===6){m.head.rotation.y+=dt*2;m.press.position.y=1.73-.16*(.5+.5*Math.sin(elapsed*9));}
+      else for(let j=0;j<m.jets.length;j++){const a=m.jets[j];a.scale.y=.7+.35*Math.sin(elapsed*11+j);a.visible=true;}
+    }
+    scanLine.position.y=1.2+(.5+.5*Math.sin(elapsed*6))*1.0;
+    scanPlane.material.opacity=.12+.1*(.5+.5*Math.sin(elapsed*6));
+    moistureFlash=Math.max(0,moistureFlash-dt);
+    moistureBeam.material.opacity=moistureFlash>0?.5:0;
     for(let i=cans.length-1;
     i>=0;
     i--) {
         const c=cans[i],u=c.userData;
         if(u.rejected) {
             u.fall+=dt;
-            if(u.rejectType==='orientation') {
+            if(u.rejectType==='moisture'){
+                 c.position.z+=dt*3.8;c.position.y-=dt*1.4;
+             }else if(u.rejectType==='orientation') {
                 // The blue bin is after the turn, at station 4 + (2,-3.3).
                 // Move diagonally OUTWARD toward its center instead of into the curve.
                 const targetX=stationDefs[3][3]+2.0;
@@ -1181,6 +1355,11 @@ function update(dt) {
         // The second orientation fault happens at the physical EXIT of the
         // ionized-air rinse/inverting machine, never at an arbitrary position.
         // The can is upright inside the machine and emerges on its side.
+        // Can is upside down after Chamber 1, coded between the chambers,
+        // and turned upright inside Chamber 2.
+        if(prev < rinsePrintT && u.progress >= rinsePrintT && !u.orientationBad){
+            u.codeMark.visible=true;
+        }
         if (prev < rinseExitT && u.progress >= rinseExitT) {
             u.exitedRinse = true;
             if (u.rinseExitBad) {
@@ -1215,6 +1394,30 @@ function update(dt) {
             orientationBlastFlash = .25;
             document.querySelector('#notice').textContent = 'Post-rinse orientation sensor: horizontal can rejected at its own air jet.';
             continue;
+        }
+        // Filling rises gradually as the can crosses the rotary filler zone.
+        if(u.progress>=fillStartT && u.progress<fillEndT && !u.orientationBad && !u.rinseExitBad){
+          u.fillAmount=Math.max(u.fillAmount,THREE.MathUtils.clamp((u.progress-fillStartT)/(fillEndT-fillStartT),0,1));
+          u.beer.visible=true;u.beer.position.y=.06+(u.height-.13)*u.fillAmount;
+          u.beer.scale.set(1,1,1);
+          if(u.fillAmount>.98)u.filled=true;
+        }
+        if(prev<seamT && u.progress>=seamT){
+          u.filled=true;u.sealed=true;u.fillAmount=1;
+          u.beer.visible=false;u.inside.visible=false;
+          u.lid.visible=true;u.lidRing.visible=true;
+        }
+        if(u.progress>=rinseT && u.progress<dryT && u.sealed){
+          u.moisture.visible=true;
+        }
+        if(prev<dryT && u.progress>=dryT){
+          u.moisture.visible=!!u.moistureBad;
+        }
+        if(prev<moistureRejectT && u.progress>=moistureRejectT && u.moistureBad){
+          u.rejected=true;u.rejectType='moisture';u.fall=0;
+          moistureFlash=.3;
+          document.querySelector('#notice').textContent='Condensation sensor: wet can detected and diverted into the blue reject bin.';
+          continue;
         }
         if (prev < xrayT && u.progress >= xrayT) {
             u.xrayFailed = u.fillBad;
@@ -1258,6 +1461,14 @@ function update(dt) {
             continue
         }const p=pathAt(u.progress);
         c.position.set(p.x,p.y,p.z);
+        // Rotate around the can's center, not its conveyor contact point.
+        // Preserve the side-lying defect geometry for incoming bad-orientation cans.
+        if(!u.orientationBad && !u.rinseExitBad){
+          const theta=canRinseAngle(u.progress);
+          c.rotation.z=theta;
+          c.position.x+=u.height*.5*Math.sin(theta);
+          c.position.y+=u.height*.5*(1-Math.cos(theta));
+        }
         // Visible mass flow: cans fan into several lanes only after X-ray
         // rejection, then smoothly converge into single file for packaging.
         if(u.progress>=downstreamMassStartT && u.progress<=packagingMergeT) {
@@ -1302,7 +1513,7 @@ stationDefs.forEach((d,i)=> {
 });
 let targetPos=new THREE.Vector3(0,0,0),targetCamera=new THREE.Vector3(18,40,50);
 function focusAt(p,dist=9) {
-    targetPos.set(p.x,1.4,p.z);
+    cameraTween=true;targetPos.set(p.x,1.4,p.z);
     targetCamera.set(p.x+dist*.8,dist*.75,p.z+dist);
 }
 function focusStation(id) {
@@ -1318,7 +1529,7 @@ function focusInspection() {
     document.querySelector('#spec').textContent='Empty cans pass beneath the KEYENCE camera and LED ring light on the upper conveyor, before entering Step 3 ionized-air cleaning and printing. The camera checks flange/rim, body defects and incoming orientation. Its dedicated downstream air jet removes failed cans before they enter the cleaner. Step 4 orientation sensing and its separate rejector remain farther downstream, after the ionized-air rinse exit. Camera height changes with selected can size.'
 }
 function overview() {
-    targetPos.set(0,1,0);
+    cameraTween=true;targetPos.set(0,1,0);
     targetCamera.set(15,42,54)
 }
 document.querySelector('#pause').onclick=()=> {
@@ -1458,8 +1669,30 @@ function animate(now) {
     last=now;
     update(dt * 3.5);
     drawFeed(now);
-    orbit.target.lerp(targetPos,.035);
-    camera.position.lerp(targetCamera,.025);
+    if(cameraTween){
+      orbit.target.lerp(targetPos,.045);
+      camera.position.lerp(targetCamera,.04);
+      if(orbit.target.distanceTo(targetPos)<.03 && camera.position.distanceTo(targetCamera)<.05)cameraTween=false;
+    }
+    // Keyboard: arrows orbit; WASD pan across floor; Q/E zoom.
+    const orbitStep=dt*1.4,panStep=dt*Math.max(3,camera.position.distanceTo(orbit.target)*.35);
+    const direction=camera.position.clone().sub(orbit.target);
+    const spherical=new THREE.Spherical().setFromVector3(direction);
+    if(keysDown.has('ArrowLeft'))spherical.theta+=orbitStep;
+    if(keysDown.has('ArrowRight'))spherical.theta-=orbitStep;
+    if(keysDown.has('ArrowUp'))spherical.phi=Math.max(.08,spherical.phi-orbitStep);
+    if(keysDown.has('ArrowDown'))spherical.phi=Math.min(Math.PI/2-.05,spherical.phi+orbitStep);
+    camera.position.copy(orbit.target).add(new THREE.Vector3().setFromSpherical(spherical));
+    const front=new THREE.Vector3();camera.getWorldDirection(front);front.y=0;front.normalize();
+    const right=new THREE.Vector3().crossVectors(front,new THREE.Vector3(0,1,0)).normalize();
+    const move=new THREE.Vector3();
+    if(keysDown.has('KeyW'))move.add(front);
+    if(keysDown.has('KeyS'))move.sub(front);
+    if(keysDown.has('KeyD'))move.add(right);
+    if(keysDown.has('KeyA'))move.sub(right);
+    if(move.lengthSq()){move.normalize().multiplyScalar(panStep);orbit.target.add(move);camera.position.add(move);}
+    if(keysDown.has('KeyQ'))camera.position.addScaledVector(camera.position.clone().sub(orbit.target).normalize(),panStep);
+    if(keysDown.has('KeyE'))camera.position.addScaledVector(camera.position.clone().sub(orbit.target).normalize(),-panStep);
     orbit.update();
     renderer.render(scene,camera)
 }
