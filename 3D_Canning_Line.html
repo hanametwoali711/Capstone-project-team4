@@ -658,7 +658,7 @@ function updateInfeed(dt) {
         }
     }
 }
-const stationDefs=[ [1,'Empty can depalletizing','Empty cans are depalletized on an elevated infeed level before moving toward the combiner.',22,12], [2,'Manual inspection / mass-flow combiner','At the elevated combiner, cans arrive in a wide mass flow, narrow into a single-file lane, and then descend toward the main production line.',7,12], [3,'Two-stage invert, rinse & code','After descending from the elevated depalletizer section, Chamber 1 inverts each can for ionized-air/vacuum cleaning, the exposed bottom receives a date/lot code between chambers, and Chamber 2 returns it upright.',-12,12], [4,'Orientation check','Upper/lower sensors and pneumatic nozzle on the inside of the conveyor eject sideways cans into a blue reject bin just after the U-turn on the outside of the lower conveyor.',-26,6.5], [5,'CO₂ flushing & filling','Rotary filler purges oxygen with CO₂ and fills each can.',-16,5], [6,'Seaming','Lids are applied and mechanically seamed onto filled cans.',-9,5], [7,'Rinse / foam removal','External rinse removes product residue and foam.',-1,5], [8,'Condensation inspection & removal','Air knives dry external surfaces; a moisture sensor checks remaining droplets and rejects wet cans.',8,5], [9,'Optional labeling','Labels or sleeves may be applied where needed.',16,5], [10,'X-ray fill/lid inspection','Downstream quality check verifies fill level and lid presence.',-13,-6], [11,'Accumulation control','After X-ray rejection, cans spread into mass flow; packaging accepts single-file cans and diverts overflow through a circulating accumulation loop.',3,-11], [12,'Selectable packaging','One packaging mode at a time: six-packs with black caps use one branch and carton boxes use the other; both feed the tray loader.',15,-13], [13,'Carton tray loading','The selected packaged product enters the tray loader; it exits seated inside a cardboard shipping tray.',19.5,-15], [14,'Manual palletization','Finished multipacks and cartons are collected in shipping trays and stacked on a wooden pallet.',31.5,-15]];
+const stationDefs=[ [1,'Empty can depalletizing','Empty cans are depalletized on an elevated infeed level before moving toward the combiner.',22,12], [2,'Manual inspection / mass-flow combiner','At the elevated combiner, cans arrive in a wide mass flow, narrow into a single-file lane, and then descend toward the main production line.',7,12], [3,'Two-stage invert, rinse & code','After descending from the elevated depalletizer section, Chamber 1 inverts each can for ionized-air/vacuum cleaning, the exposed bottom receives a date/lot code between chambers, and Chamber 2 returns it upright.',-12,12], [4,'Orientation check','Upper/lower sensors and pneumatic nozzle on the inside of the conveyor eject sideways cans into a blue reject bin just after the U-turn on the outside of the lower conveyor.',-26,6.5], [5,'CO₂ flushing & filling','Rotary filler purges oxygen with CO₂ and fills each can.',-16,5], [6,'Seaming','Lids are applied and mechanically seamed onto filled cans.',-9,5], [7,'Rinse / foam removal','External rinse removes product residue and foam.',-1,5], [8,'Condensation removal','Air knives remove exterior condensation and the cans continue directly to optional labeling without rejection.',8,5], [9,'Optional labeling','Labels or sleeves may be applied where needed.',16,5], [10,'X-ray fill/lid inspection','Downstream quality check verifies fill level and lid presence.',-13,-6], [11,'Accumulation control','After X-ray rejection, cans spread into mass flow; packaging accepts single-file cans and diverts overflow through a circulating accumulation loop.',3,-11], [12,'Selectable packaging','One packaging mode at a time: six-packs with black caps use one branch and carton boxes use the other; both feed the tray loader.',15,-13], [13,'Carton tray loading','The selected packaged product enters the tray loader; it exits seated inside a cardboard shipping tray.',19.5,-15], [14,'Manual palletization','Finished multipacks and cartons are collected in shipping trays and stacked on a wooden pallet.',31.5,-15]];
 const stationObjects=[];
 const equipment=new THREE.Group();
 scene.add(equipment);
@@ -1100,15 +1100,6 @@ const scanMat=new THREE.MeshBasicMaterial({color:0x5be1ff,transparent:true,opaci
 const scanPlane=new THREE.Mesh(new THREE.PlaneGeometry(1.45,1.55),scanMat);scanPlane.position.set(0,1.65,0);scanGroup.add(scanPlane);
 const scanLine=box(1.55,.055,.025,[0,1.75,0],new THREE.MeshBasicMaterial({color:0x80f5ff}),scanGroup);
 const scanBeam=mesh(new THREE.CylinderGeometry(.012,.012,1.1,10),new THREE.MeshBasicMaterial({color:0x75eaff,transparent:true,opacity:.7}),[0,1.65,0],scanGroup);
-// Moisture sensor and dedicated downstream reject, before optional labeling.
-const moistureReject=new THREE.Group();moistureReject.position.set(11.3,0,5);equipment.add(moistureReject);
-moistureReject.userData.stationId=8;
-box(.09,1.4,.09,[0,.7,-.72],M.steel,moistureReject);
-box(.42,.28,.4,[0,1.35,-.63],M.blue,moistureReject);
-box(1.25,.53,1.1,[.25,.34,2.1],M.blue,moistureReject);
-const moistureBeam=mesh(new THREE.ConeGeometry(.3,1.2,12,1,true),new THREE.MeshBasicMaterial({color:0x85e8ff,transparent:true,opacity:0,side:THREE.DoubleSide}),[0,1.1,.15],moistureReject);
-moistureBeam.rotation.x=Math.PI/2;
-let moistureFlash=0;
 const cans=[];
 let running=true,speed=220,inject=false,canSize='12',inspected=0,good=0,rejected=0,showLabels=true,wire=false,inspectionFlash=0,blastFlash=0,lastDefect='GOOD',lastStatus='WAITING';
 const canH= {
@@ -1163,7 +1154,7 @@ function makeCan(defective) {
  moisture.visible=false;
  g.userData={defective,defectType,inspected:false,rejected:false,progress:0,fall:0,
   orientationBad:Math.random()<.07,rinseExitBad:Math.random()<.11,exitedRinse:false,
-  fillBad:Math.random()<.07,moistureBad:Math.random()<.12,filled:false,sealed:false,
+  fillBad:Math.random()<.07,filled:false,sealed:false,
   fillAmount:0,lid,lip,lidRing,beer,inside,moisture,height:h,codeMark};
  if(g.userData.orientationBad){
   const contents=new THREE.Group();while(g.children.length){const part=g.children[0];part.position.y-=h/2;contents.add(part);}
@@ -1258,7 +1249,6 @@ const fillEndT=nearestProgress(new THREE.Vector3(-14.4,.92,5));
 const seamT=nearestProgress(new THREE.Vector3(-9,.92,5));
 const rinseT=nearestProgress(new THREE.Vector3(-1,.92,5));
 const dryT=nearestProgress(new THREE.Vector3(8,.92,5));
-const moistureRejectT=nearestProgress(new THREE.Vector3(11.3,.92,5));
 const xrayT = nearestProgress(new THREE.Vector3(-13, .92, -6));
 const xrayRejectT = nearestProgress(XRAY_REJECT_POS);
 downstreamMassStartT=nearestProgress(new THREE.Vector3(-17,.92,-15));
@@ -1297,17 +1287,13 @@ function update(dt) {
     }
     scanLine.position.y=1.2+(.5+.5*Math.sin(elapsed*6))*1.0;
     scanPlane.material.opacity=.12+.1*(.5+.5*Math.sin(elapsed*6));
-    moistureFlash=Math.max(0,moistureFlash-dt);
-    moistureBeam.material.opacity=moistureFlash>0?.5:0;
     for(let i=cans.length-1;
     i>=0;
     i--) {
         const c=cans[i],u=c.userData;
         if(u.rejected) {
             u.fall+=dt;
-            if(u.rejectType==='moisture'){
-                 c.position.z+=dt*3.8;c.position.y-=dt*1.4;
-             }else if(u.rejectType==='orientation') {
+            if(u.rejectType==='orientation') {
                 // The blue bin is after the turn, at station 4 + (2,-3.3).
                 // Move diagonally OUTWARD toward its center instead of into the curve.
                 const targetX=stationDefs[3][3]+2.0;
@@ -1411,13 +1397,7 @@ function update(dt) {
           u.moisture.visible=true;
         }
         if(prev<dryT && u.progress>=dryT){
-          u.moisture.visible=!!u.moistureBad;
-        }
-        if(prev<moistureRejectT && u.progress>=moistureRejectT && u.moistureBad){
-          u.rejected=true;u.rejectType='moisture';u.fall=0;
-          moistureFlash=.3;
-          document.querySelector('#notice').textContent='Condensation sensor: wet can detected and diverted into the blue reject bin.';
-          continue;
+          u.moisture.visible=false;
         }
         if (prev < xrayT && u.progress >= xrayT) {
             u.xrayFailed = u.fillBad;
